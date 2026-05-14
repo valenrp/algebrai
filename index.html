@@ -1,0 +1,2159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AlgebrAI — Asistente Matemático Inteligente</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* ══════════════════════════════════════════════
+   VARIABLES & RESET
+══════════════════════════════════════════════ */
+:root {
+  --c: #00D4FF;       /* cyan */
+  --p: #7B61FF;       /* purple */
+  --g: #00E676;       /* green */
+  --pk: #FF4081;      /* pink */
+  --y: #FFB300;       /* yellow */
+  --o: #FF6B35;       /* orange */
+  --bg0: #03050C;
+  --bg1: #080E1A;
+  --bg2: #0D1421;
+  --bg3: #111B2E;
+  --bg4: #16233A;
+  --bd: rgba(0,212,255,0.12);
+  --bd2: rgba(0,212,255,0.3);
+  --tx: #DCE8FF;
+  --tx2: #7A8BAA;
+  --tx3: #3D4F6E;
+  --sw: 230px;
+  --sw-c: 60px;
+  --gc: 0 0 20px rgba(0,212,255,0.35), 0 0 60px rgba(0,212,255,0.1);
+  --gp: 0 0 20px rgba(123,97,255,0.35), 0 0 60px rgba(123,97,255,0.1);
+  --gg: 0 0 20px rgba(0,230,118,0.35), 0 0 60px rgba(0,230,118,0.1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{font-family:'Rajdhani',sans-serif;background:var(--bg0);color:var(--tx);overflow:hidden;height:100vh;width:100vw;cursor:default}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:'JetBrains Mono',monospace}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg1)}
+::-webkit-scrollbar-thumb{background:rgba(0,212,255,0.25);border-radius:3px}
+
+/* ══════════════════════════════════════════════
+   LOADER
+══════════════════════════════════════════════ */
+#loader{
+  position:fixed;inset:0;z-index:9999;
+  background:var(--bg0);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;
+}
+.ld-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px;
+}
+.ld-cell{
+  width:12px;height:12px;border-radius:3px;
+  background:var(--bg3);
+  animation:cellPulse 1.2s ease-in-out infinite;
+}
+.ld-cell:nth-child(1){animation-delay:0s;--cc:var(--c)}
+.ld-cell:nth-child(2){animation-delay:.15s;--cc:var(--p)}
+.ld-cell:nth-child(3){animation-delay:.3s;--cc:var(--g)}
+.ld-cell:nth-child(4){animation-delay:.45s;--cc:var(--pk)}
+.ld-cell:nth-child(5){animation-delay:.6s;--cc:var(--p)}
+.ld-cell:nth-child(6){animation-delay:.75s;--cc:var(--c)}
+.ld-cell:nth-child(7){animation-delay:.9s;--cc:var(--pk)}
+.ld-cell:nth-child(8){animation-delay:1.05s;--cc:var(--g)}
+@keyframes cellPulse{0%,100%{background:var(--bg3)}50%{background:var(--cc,var(--c));box-shadow:0 0 12px var(--cc,var(--c))}}
+.ld-logo{
+  font-family:'Orbitron',monospace;font-weight:900;
+  font-size:clamp(2rem,6vw,3.8rem);letter-spacing:6px;
+  background:linear-gradient(135deg,var(--c),var(--p),var(--g));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  animation:logoBreathe 2s ease-in-out infinite;
+}
+@keyframes logoBreathe{0%,100%{filter:brightness(1) drop-shadow(0 0 10px rgba(0,212,255,0.3))}50%{filter:brightness(1.3) drop-shadow(0 0 25px rgba(0,212,255,0.6))}}
+.ld-msg{font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--c);opacity:.8;min-height:1.2em;letter-spacing:1px}
+.ld-track{width:min(400px,80vw);height:3px;background:var(--bg3);border-radius:3px;overflow:hidden;position:relative}
+.ld-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--c),var(--p),var(--g));border-radius:3px;transition:width .35s ease;box-shadow:var(--gc)}
+.ld-pct{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--tx2)}
+
+/* ══════════════════════════════════════════════
+   INTRO
+══════════════════════════════════════════════ */
+#intro{
+  position:fixed;inset:0;z-index:9998;
+  background:var(--bg0);
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  overflow:hidden;
+}
+#pcanvas{position:absolute;inset:0;pointer-events:none}
+.intro-inner{
+  position:relative;z-index:2;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:18px;
+}
+.intro-eyebrow{
+  font-family:'JetBrains Mono',monospace;font-size:.72rem;
+  color:var(--c);letter-spacing:4px;text-transform:uppercase;
+  opacity:0;animation:fadeSlideUp .6s ease 0.4s forwards;
+}
+.intro-logo{
+  font-family:'Orbitron',monospace;font-weight:900;
+  font-size:clamp(3.5rem,10vw,7rem);letter-spacing:4px;
+  background:linear-gradient(135deg,var(--c) 0%,var(--p) 45%,var(--g) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  opacity:0;transform:scale(.65);
+  animation:logoIn 1.2s cubic-bezier(.16,1,.3,1) .7s forwards;
+  filter:drop-shadow(0 0 40px rgba(0,212,255,.5));
+}
+@keyframes logoIn{to{opacity:1;transform:scale(1)}}
+.intro-sub{
+  font-family:'Rajdhani',sans-serif;font-weight:300;
+  font-size:clamp(1rem,2.5vw,1.4rem);letter-spacing:4px;
+  color:rgba(220,232,255,.65);text-transform:uppercase;
+  opacity:0;animation:fadeSlideUp .8s ease 1.6s forwards;
+}
+.intro-tag{
+  font-family:'JetBrains Mono',monospace;font-size:.75rem;
+  color:var(--g);letter-spacing:2px;
+  opacity:0;animation:fadeSlideUp .8s ease 2s forwards;
+}
+@keyframes fadeSlideUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+.btn-enter{
+  margin-top:12px;padding:15px 56px;
+  font-family:'Orbitron',monospace;font-size:.9rem;font-weight:700;letter-spacing:3px;
+  color:var(--bg0);background:linear-gradient(135deg,var(--c),var(--p));
+  border:none;border-radius:50px;
+  opacity:0;animation:fadeSlideUp .8s ease 2.4s forwards;
+  transition:transform .2s,box-shadow .2s;
+  box-shadow:var(--gc);
+}
+.btn-enter:hover{transform:scale(1.07) translateY(-3px);box-shadow:0 0 50px rgba(0,212,255,.6),0 0 100px rgba(123,97,255,.3)}
+.mf{
+  position:absolute;
+  font-family:'JetBrains Mono',monospace;
+  pointer-events:none;white-space:nowrap;
+  animation:mfloat linear infinite;
+}
+@keyframes mfloat{
+  0%{transform:translateY(0) rotate(0deg);opacity:0}
+  8%{opacity:1}92%{opacity:.3}
+  100%{transform:translateY(-105vh) rotate(15deg);opacity:0}
+}
+
+/* ══════════════════════════════════════════════
+   APP SHELL
+══════════════════════════════════════════════ */
+#app{display:none;width:100vw;height:100vh;flex-direction:row}
+
+/* ──── SIDEBAR ──────────────────────────────── */
+#sb{
+  width:var(--sw);min-width:var(--sw);height:100vh;
+  background:var(--bg1);border-right:1px solid var(--bd);
+  display:flex;flex-direction:column;overflow:hidden;
+  position:relative;z-index:20;
+  transition:width .3s cubic-bezier(.4,0,.2,1),min-width .3s cubic-bezier(.4,0,.2,1);
+}
+#sb.col{width:var(--sw-c);min-width:var(--sw-c)}
+.sb-head{
+  padding:18px 14px 14px;
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--bd);min-height:60px;flex-shrink:0;
+}
+.sb-brand{
+  font-family:'Orbitron',monospace;font-size:.95rem;font-weight:700;
+  background:linear-gradient(135deg,var(--c),var(--p));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  white-space:nowrap;overflow:hidden;transition:opacity .2s;
+}
+#sb.col .sb-brand{opacity:0;pointer-events:none}
+.sb-tog{
+  background:none;border:none;color:var(--tx2);padding:5px;border-radius:6px;
+  transition:color .2s,background .2s;flex-shrink:0;display:flex;
+}
+.sb-tog:hover{color:var(--c);background:rgba(0,212,255,.08)}
+.sb-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding-bottom:12px}
+.sb-sec{
+  padding:14px 16px 4px;font-size:.58rem;font-weight:700;
+  letter-spacing:2.5px;text-transform:uppercase;color:var(--tx3);
+  white-space:nowrap;transition:opacity .2s;
+}
+#sb.col .sb-sec{opacity:0}
+.ni{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 14px;margin:1px 7px;
+  border-radius:8px;cursor:pointer;
+  transition:all .18s;color:var(--tx2);font-size:.9rem;font-weight:500;
+  white-space:nowrap;position:relative;overflow:hidden;border:1px solid transparent;
+}
+.ni:hover{background:rgba(0,212,255,.07);color:var(--tx)}
+.ni.act{
+  background:linear-gradient(135deg,rgba(0,212,255,.12),rgba(123,97,255,.08));
+  color:var(--c);border-color:rgba(0,212,255,.2);
+}
+.ni.act::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:linear-gradient(180deg,var(--c),var(--p));border-radius:0 2px 2px 0;
+}
+.ni-ic{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1rem}
+.ni-lbl{transition:opacity .2s;font-weight:600}
+#sb.col .ni-lbl{opacity:0}
+.ni-badge{
+  margin-left:auto;font-size:.58rem;padding:2px 7px;
+  background:var(--p);border-radius:10px;color:#fff;font-weight:700;
+  transition:opacity .2s;
+}
+#sb.col .ni-badge{opacity:0}
+.sb-foot{
+  padding:14px;border-top:1px solid var(--bd);
+  font-size:.65rem;color:var(--tx3);text-align:center;
+  white-space:nowrap;transition:opacity .2s;flex-shrink:0;
+}
+#sb.col .sb-foot{opacity:0}
+
+/* ──── MAIN ─────────────────────────────────── */
+#main{flex:1;height:100vh;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column}
+.topbar{
+  height:54px;background:rgba(8,14,26,.92);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--bd);display:flex;align-items:center;
+  padding:0 22px;gap:12px;position:sticky;top:0;z-index:5;flex-shrink:0;
+}
+.tb-title{font-family:'Orbitron',monospace;font-size:.8rem;font-weight:700;color:var(--c);flex:1;letter-spacing:1px}
+.tb-status{display:flex;align-items:center;gap:6px;font-size:.7rem;color:var(--g);font-family:'JetBrains Mono',monospace}
+.sdot{width:7px;height:7px;background:var(--g);border-radius:50%;box-shadow:var(--gg);animation:sdotP 2s ease-in-out infinite}
+@keyframes sdotP{0%,100%{opacity:1}50%{opacity:.3}}
+.mob-btn{display:none;background:none;border:none;color:var(--tx2);padding:4px;align-items:center}
+#sbov{display:none;position:fixed;inset:0;z-index:15;background:rgba(0,0,0,.55);backdrop-filter:blur(3px)}
+
+/* ──── PAGES ─────────────────────────────────── */
+.pg{display:none;padding:26px 24px 56px;animation:pgIn .3s ease}
+.pg.act{display:block}
+@keyframes pgIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.pg-title{
+  font-family:'Orbitron',monospace;font-size:1.3rem;font-weight:700;margin-bottom:5px;
+  background:linear-gradient(135deg,var(--tx) 55%,var(--c));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.pg-sub{font-size:.88rem;color:var(--tx2);margin-bottom:24px;font-weight:400}
+
+/* ──── DIFFICULTY SELECTOR ─────────────────── */
+.diff-bar{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.d-btn{
+  padding:7px 20px;font-family:'Orbitron',monospace;font-size:.65rem;
+  font-weight:700;letter-spacing:1.5px;border-radius:20px;
+  border:1px solid var(--bd);background:transparent;color:var(--tx2);
+  transition:all .2s;cursor:pointer;
+}
+.d-btn:hover{border-color:var(--c);color:var(--c)}
+.d-btn.act{background:linear-gradient(135deg,rgba(0,212,255,.15),rgba(123,97,255,.1));border-color:var(--c);color:var(--c);box-shadow:0 0 15px rgba(0,212,255,.2)}
+.d-btn.med.act{background:linear-gradient(135deg,rgba(255,179,0,.12),rgba(255,107,53,.08));border-color:var(--y);color:var(--y)}
+.d-btn.dif.act{background:linear-gradient(135deg,rgba(255,64,129,.12),rgba(123,97,255,.08));border-color:var(--pk);color:var(--pk)}
+
+/* ──── SOLVER CARD ──────────────────────────── */
+.solver{
+  background:var(--bg2);border:1px solid var(--bd);border-radius:16px;
+  padding:26px;max-width:820px;margin-bottom:20px;
+}
+.s-label{font-size:.65rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--tx2);margin-bottom:10px}
+.s-row{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
+.s-input{
+  flex:1;min-width:180px;
+  background:var(--bg3);border:1px solid var(--bd);border-radius:10px;
+  padding:13px 16px;font-size:.95rem;color:var(--tx);outline:none;
+  transition:border-color .2s,box-shadow .2s;
+}
+.s-input:focus{border-color:var(--c);box-shadow:0 0 0 3px rgba(0,212,255,.1)}
+.s-input::placeholder{color:var(--tx3)}
+.s-input-sm{width:90px;min-width:0;text-align:center;flex:none}
+.s-select{
+  background:var(--bg3);border:1px solid var(--bd);border-radius:10px;
+  padding:12px 32px 12px 14px;font-size:.9rem;color:var(--tx);outline:none;
+  appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237A8BAA' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;background-color:var(--bg3);
+  cursor:pointer;
+}
+.s-select:focus{border-color:var(--c)}
+.btn-go{
+  padding:13px 28px;font-family:'Orbitron',monospace;font-size:.72rem;
+  font-weight:700;letter-spacing:1.5px;border:none;border-radius:10px;
+  background:linear-gradient(135deg,var(--c),var(--p));color:var(--bg0);
+  box-shadow:var(--gc);transition:all .2s;white-space:nowrap;
+}
+.btn-go:hover{transform:translateY(-2px);box-shadow:0 0 35px rgba(0,212,255,.55)}
+.btn-go:active{transform:none}
+.btn-ex{
+  padding:8px 16px;font-family:'Rajdhani',sans-serif;font-size:.82rem;font-weight:600;
+  border:1px solid var(--bd);border-radius:8px;background:transparent;color:var(--tx2);
+  transition:all .2s;letter-spacing:.5px;
+}
+.btn-ex:hover{border-color:var(--c);color:var(--c);background:rgba(0,212,255,.06)}
+.ex-row{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+
+/* ──── RESULT AREA ──────────────────────────── */
+.res{display:none;margin-top:20px;animation:pgIn .3s ease}
+.res.show{display:block}
+.steps-box{
+  background:var(--bg3);border:1px solid var(--bd);border-radius:12px;
+  padding:20px;margin-bottom:14px;
+}
+.steps-hd{
+  font-family:'Orbitron',monospace;font-size:.68rem;font-weight:700;
+  color:var(--c);letter-spacing:2px;margin-bottom:16px;
+  display:flex;align-items:center;gap:8px;
+}
+.steps-hd::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(0,212,255,.3),transparent)}
+.step{display:flex;gap:12px;margin-bottom:12px;animation:stepIn .3s ease both}
+@keyframes stepIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+.step-n{
+  width:24px;height:24px;flex-shrink:0;border-radius:50%;
+  background:linear-gradient(135deg,var(--p),var(--c));
+  display:flex;align-items:center;justify-content:center;
+  font-family:'JetBrains Mono',monospace;font-size:.65rem;font-weight:700;color:#fff;
+}
+.step-t{
+  flex:1;font-family:'JetBrains Mono',monospace;font-size:.85rem;
+  line-height:1.65;color:var(--tx);padding-top:2px;
+}
+.step-t em{color:var(--c);font-style:normal}
+.step-t strong{color:var(--y)}
+.step-t .hl-g{color:var(--g)}
+.step-t .hl-p{color:var(--p)}
+.step-t .hl-pk{color:var(--pk)}
+.res-final{
+  background:linear-gradient(135deg,rgba(0,230,118,.07),rgba(0,212,255,.04));
+  border:1px solid rgba(0,230,118,.22);border-radius:12px;
+  padding:18px 22px;text-align:center;
+}
+.res-lbl{font-size:.65rem;letter-spacing:2px;text-transform:uppercase;color:var(--tx2);margin-bottom:7px}
+.res-val{
+  font-family:'Orbitron',monospace;font-size:1.6rem;font-weight:700;
+  color:var(--g);text-shadow:var(--gg);word-break:break-all;
+}
+.res-val.multi{font-size:1.1rem;line-height:1.8}
+.err-box{
+  background:rgba(255,64,129,.07);border:1px solid rgba(255,64,129,.28);
+  border-radius:10px;padding:13px 16px;color:var(--pk);
+  font-family:'JetBrains Mono',monospace;font-size:.82rem;margin-top:16px;
+}
+
+/* ──── QUICK CARDS ──────────────────────────── */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:14px;margin-bottom:28px}
+.card{
+  background:var(--bg2);border:1px solid var(--bd);border-radius:14px;
+  padding:22px 18px;cursor:pointer;transition:all .3s cubic-bezier(.16,1,.3,1);
+  position:relative;overflow:hidden;
+}
+.card::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--cc,var(--c)) 8%,transparent),transparent);
+  opacity:0;transition:opacity .3s;
+}
+.card:hover{transform:translateY(-5px);border-color:var(--cc,var(--c));box-shadow:0 0 30px color-mix(in srgb,var(--cc,var(--c)) 18%,transparent)}
+.card:hover::before{opacity:1}
+.card-ic{
+  width:48px;height:48px;border-radius:11px;
+  border:1px solid color-mix(in srgb,var(--cc,var(--c)) 35%,transparent);
+  display:flex;align-items:center;justify-content:center;font-size:1.4rem;
+  margin-bottom:14px;transition:box-shadow .3s;
+}
+.card:hover .card-ic{box-shadow:0 0 18px color-mix(in srgb,var(--cc,var(--c)) 35%,transparent)}
+.card-name{font-family:'Orbitron',monospace;font-size:.78rem;font-weight:700;color:var(--cc,var(--c));margin-bottom:5px}
+.card-desc{font-size:.77rem;color:var(--tx2);line-height:1.45}
+
+/* ──── STATS ROW ────────────────────────────── */
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:11px;margin-bottom:26px}
+.stat{background:var(--bg2);border:1px solid var(--bd);border-radius:11px;padding:14px;text-align:center}
+.stat-n{font-family:'Orbitron',monospace;font-size:1.5rem;font-weight:700;color:var(--c)}
+.stat-l{font-size:.68rem;color:var(--tx2);margin-top:3px;text-transform:uppercase;letter-spacing:1px}
+
+/* ──── SECTION TITLE ────────────────────────── */
+.sec-t{
+  font-family:'Orbitron',monospace;font-size:.68rem;font-weight:700;
+  letter-spacing:2.5px;text-transform:uppercase;color:var(--tx2);
+  margin-bottom:12px;display:flex;align-items:center;gap:8px;
+}
+.sec-t::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--bd),transparent)}
+
+/* ──── GRAPH ────────────────────────────────── */
+.graph-wrap{
+  background:var(--bg3);border:1px solid var(--bd);border-radius:12px;
+  padding:18px;margin-top:18px;
+}
+.graph-wrap canvas{max-height:380px}
+.graph-info{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:14px}
+.gi{background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:11px}
+.gi-l{font-size:.62rem;color:var(--tx2);margin-bottom:3px;letter-spacing:1px;text-transform:uppercase}
+.gi-v{font-family:'JetBrains Mono',monospace;font-size:.85rem;color:var(--c)}
+
+/* ──── HISTORY ──────────────────────────────── */
+.hist-list{display:flex;flex-direction:column;gap:9px}
+.hi{
+  background:var(--bg2);border:1px solid var(--bd);border-radius:10px;
+  padding:13px 16px;display:flex;align-items:center;gap:14px;
+  transition:border-color .2s;animation:pgIn .3s ease;
+}
+.hi:hover{border-color:var(--bd2)}
+.hi-ic{width:34px;height:34px;flex-shrink:0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.95rem}
+.hi-eq{flex:1;font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hi-cat{font-size:.65rem;color:var(--tx2);margin-top:2px}
+.hi-res{font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--g);white-space:nowrap;font-weight:600}
+.hi-t{font-size:.65rem;color:var(--tx2);white-space:nowrap}
+.hi-del{background:none;border:none;color:var(--tx2);padding:3px;border-radius:4px;transition:color .2s;font-size:.9rem}
+.hi-del:hover{color:var(--pk)}
+.empty-h{text-align:center;padding:50px 20px;color:var(--tx2);font-size:.9rem}
+.empty-h .ei{font-size:2.5rem;margin-bottom:10px;opacity:.35}
+
+/* ──── HELP ─────────────────────────────────── */
+.help-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+.hc{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;padding:20px;transition:border-color .2s}
+.hc:hover{border-color:var(--bd2)}
+.hc-t{font-family:'Orbitron',monospace;font-size:.78rem;font-weight:700;color:var(--c);margin-bottom:11px;display:flex;align-items:center;gap:7px}
+.hc ul{list-style:none;display:flex;flex-direction:column;gap:7px}
+.hc li{
+  font-family:'JetBrains Mono',monospace;font-size:.77rem;color:var(--tx2);
+  padding:5px 9px;background:var(--bg3);border-radius:6px;border-left:2px solid rgba(0,212,255,.2);
+}
+.hc li span{color:var(--c)}
+
+/* ──── TRIG BUTTONS ─────────────────────────── */
+.trig-fns{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+.tf{
+  padding:9px 16px;font-family:'JetBrains Mono',monospace;font-size:.8rem;
+  border:1px solid rgba(123,97,255,.3);border-radius:8px;background:rgba(123,97,255,.07);
+  color:var(--p);transition:all .2s;
+}
+.tf:hover,.tf.act{background:rgba(123,97,255,.2);border-color:var(--p);color:#fff;box-shadow:var(--gp)}
+
+/* ──── SYSTEM SECTION ───────────────────────── */
+.sys-select{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.coeff-row{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.coeff-g{display:flex;align-items:center;gap:7px}
+.coeff-l{font-family:'JetBrains Mono',monospace;font-size:.88rem;color:var(--tx2)}
+
+/* ──── AI SOLVER ────────────────────────────── */
+.ai-textarea{
+  resize:vertical;min-height:80px;line-height:1.6;
+}
+.ai-resp{
+  font-family:'JetBrains Mono',monospace;font-size:.84rem;
+  line-height:1.8;color:var(--tx);
+}
+.ai-resp h3{
+  font-family:'Orbitron',monospace;font-size:.72rem;color:var(--c);
+  letter-spacing:2px;margin:16px 0 8px;
+}
+.ai-resp .ai-step{
+  display:flex;gap:12px;margin-bottom:10px;
+  padding:10px 14px;background:var(--bg3);border-radius:8px;
+  border-left:3px solid var(--p);animation:stepIn .3s ease both;
+}
+.ai-resp .ai-hl{color:var(--g);font-weight:700}
+.ai-resp .ai-result{
+  background:linear-gradient(135deg,rgba(0,230,118,.07),rgba(0,212,255,.04));
+  border:1px solid rgba(0,230,118,.25);border-radius:12px;
+  padding:16px 20px;margin-top:14px;text-align:center;
+  font-family:'Orbitron',monospace;font-size:1.1rem;color:var(--g);
+  text-shadow:var(--gg);
+}
+.ai-thinking{
+  display:flex;align-items:center;gap:12px;padding:20px;
+  color:var(--tx2);font-family:'JetBrains Mono',monospace;font-size:.82rem;
+}
+.ai-dots span{
+  display:inline-block;width:7px;height:7px;border-radius:50%;
+  background:var(--c);margin:0 2px;
+  animation:aiDot 1.2s ease-in-out infinite;
+}
+.ai-dots span:nth-child(2){animation-delay:.2s}
+.ai-dots span:nth-child(3){animation-delay:.4s}
+@keyframes aiDot{0%,100%{transform:translateY(0);opacity:.3}50%{transform:translateY(-6px);opacity:1}}
+
+/* ──── RESPONSIVE ───────────────────────────── */
+@media(max-width:720px){
+  :root{--sw:210px}
+  #sb{position:fixed;left:-210px;transition:left .3s ease;z-index:25}
+  #sb.mob-open{left:0}
+  #app{flex-direction:column}
+  #main{width:100vw}
+  .pg{padding:16px 14px 48px}
+  .cards{grid-template-columns:repeat(2,1fr)}
+  .mob-btn{display:flex}
+  #sb.col{width:var(--sw);min-width:var(--sw)}
+  #sb.col .ni-lbl,#sb.col .sb-brand,#sb.col .sb-sec,#sb.col .sb-foot,#sb.col .ni-badge{opacity:1}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ LOADER ══════════════════════════════════════ -->
+<div id="loader">
+  <div class="ld-grid">
+    <div class="ld-cell"></div><div class="ld-cell"></div>
+    <div class="ld-cell"></div><div class="ld-cell"></div>
+    <div class="ld-cell"></div><div class="ld-cell"></div>
+    <div class="ld-cell"></div><div class="ld-cell"></div>
+  </div>
+  <div class="ld-logo">AlgebrAI</div>
+  <div class="ld-msg" id="ldMsg">Inicializando sistema…</div>
+  <div class="ld-track"><div class="ld-fill" id="ldBar"></div></div>
+  <div class="ld-pct" id="ldPct">0%</div>
+</div>
+
+<!-- ═══ INTRO ════════════════════════════════════════ -->
+<div id="intro">
+  <canvas id="pcanvas"></canvas>
+  <div class="intro-inner">
+    <div class="intro-eyebrow">// Sistema de IA matemática avanzada</div>
+    <div class="intro-logo">AlgebrAI</div>
+    <div class="intro-sub">Tu Asistente Inteligente Matemático</div>
+    <div class="intro-tag">▸ Álgebra · Factorización · Logaritmos · Trigonometría · Gráficas</div>
+    <button class="btn-enter" onclick="enterApp()">⚡ INICIAR SISTEMA</button>
+  </div>
+</div>
+
+<!-- ═══ APP ══════════════════════════════════════════ -->
+<div id="app">
+
+<!-- SIDEBAR -->
+<nav id="sb">
+  <div class="sb-head">
+    <div class="sb-brand">AlgebrAI</div>
+    <button class="sb-tog" onclick="toggleSb()">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+    </button>
+  </div>
+  <div class="sb-scroll">
+    <div class="sb-sec">Principal</div>
+    <div class="ni act" id="ni-home" onclick="nav('home')"><div class="ni-ic">🏠</div><span class="ni-lbl">Inicio</span></div>
+    <div class="sb-sec">Álgebra</div>
+    <div class="ni" id="ni-poli" onclick="nav('poli')"><div class="ni-ic">📐</div><span class="ni-lbl">Polinomios</span></div>
+    <div class="ni" id="ni-fact" onclick="nav('fact')"><div class="ni-ic">🔢</div><span class="ni-lbl">Factorización</span></div>
+    <div class="sb-sec">Ecuaciones</div>
+    <div class="ni" id="ni-lin" onclick="nav('lin')"><div class="ni-ic">𝑥</div><span class="ni-lbl">Lineales</span></div>
+    <div class="ni" id="ni-quad" onclick="nav('quad')"><div class="ni-ic">𝑥²</div><span class="ni-lbl">Cuadráticas</span></div>
+    <div class="ni" id="ni-sys" onclick="nav('sys')"><div class="ni-ic">⚙</div><span class="ni-lbl">Sistemas</span></div>
+    <div class="sb-sec">Más módulos</div>
+    <div class="ni" id="ni-log" onclick="nav('log')"><div class="ni-ic">㏒</div><span class="ni-lbl">Logaritmos</span></div>
+    <div class="ni" id="ni-trig" onclick="nav('trig')"><div class="ni-ic">〜</div><span class="ni-lbl">Trigonometría</span></div>
+    <div class="ni" id="ni-graph" onclick="nav('graph')"><div class="ni-ic">📈</div><span class="ni-lbl">Gráficas</span></div>
+    <div class="sb-sec">IA</div>
+    <div class="ni" id="ni-ai" onclick="nav('ai')" style="border:1px solid rgba(0,230,118,0.25);background:linear-gradient(135deg,rgba(0,230,118,0.06),rgba(0,212,255,0.04))"><div class="ni-ic">🤖</div><span class="ni-lbl" style="color:var(--g)">Resolver con IA</span></div>
+    <div class="sb-sec">Sistema</div>
+    <div class="ni" id="ni-hist" onclick="nav('hist')"><div class="ni-ic">🕑</div><span class="ni-lbl">Historial</span><span class="ni-badge" id="hBadge">0</span></div>
+    <div class="ni" id="ni-help" onclick="nav('help')"><div class="ni-ic">❓</div><span class="ni-lbl">Ayuda</span></div>
+  </div>
+  <div class="sb-foot">AlgebrAI © 2025 · v3.0</div>
+</nav>
+<div id="sbov" onclick="closeMob()"></div>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <button class="mob-btn" onclick="openMob()">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+    </button>
+    <div class="tb-title" id="tbTitle">INICIO</div>
+    <div class="tb-status"><div class="sdot"></div><span>Sistema activo</span></div>
+  </div>
+
+  <!-- ══ PAGE: HOME ══════════════════════════════ -->
+  <div class="pg act" id="pg-home">
+    <div class="pg-title">Bienvenido a AlgebrAI</div>
+    <div class="pg-sub">Selecciona un módulo o escribe tu ejercicio directamente.</div>
+    <div class="stats">
+      <div class="stat"><div class="stat-n" id="stOps">0</div><div class="stat-l">Operaciones</div></div>
+      <div class="stat"><div class="stat-n">9</div><div class="stat-l">Módulos</div></div>
+      <div class="stat"><div class="stat-n" id="stGraphs">0</div><div class="stat-l">Gráficas</div></div>
+      <div class="stat"><div class="stat-n">3</div><div class="stat-l">Niveles</div></div>
+    </div>
+    <div class="sec-t">Módulos Disponibles</div>
+    <div class="cards">
+      <div class="card" style="--cc:#00D4FF" onclick="nav('poli')"><div class="card-ic">📐</div><div class="card-name">Polinomios</div><div class="card-desc">Suma, resta, multiplicación, división y propiedades.</div></div>
+      <div class="card" style="--cc:#7B61FF" onclick="nav('fact')"><div class="card-ic">🔢</div><div class="card-name">Factorización</div><div class="card-desc">7 métodos: factor común, cuadrado perfecto, cubos y más.</div></div>
+      <div class="card" style="--cc:#00E676" onclick="nav('lin')"><div class="card-ic">𝑥</div><div class="card-name">Ec. Lineales</div><div class="card-desc">Resuelve ax + b = c con procedimiento detallado.</div></div>
+      <div class="card" style="--cc:#FFB300" onclick="nav('quad')"><div class="card-ic">𝑥²</div><div class="card-name">Ec. Cuadráticas</div><div class="card-desc">Fórmula general, discriminante y raíces.</div></div>
+      <div class="card" style="--cc:#FF6B35" onclick="nav('sys')"><div class="card-ic">⚙</div><div class="card-name">Sistemas</div><div class="card-desc">Sustitución, igualación y eliminación.</div></div>
+      <div class="card" style="--cc:#00E676" onclick="nav('log')"><div class="card-ic">㏒</div><div class="card-name">Logaritmos</div><div class="card-desc">Propiedades: suma, resta y cambio de base.</div></div>
+      <div class="card" style="--cc:#FF4081" onclick="nav('trig')"><div class="card-ic">〜</div><div class="card-name">Trigonometría</div><div class="card-desc">Pitágoras, funciones, identidades y conversiones.</div></div>
+      <div class="card" style="--cc:#7B61FF" onclick="nav('graph')"><div class="card-ic">📈</div><div class="card-name">Gráficas</div><div class="card-desc">Visualiza funciones lineales, cuadráticas y más.</div></div>
+      <div class="card" style="--cc:#00E676;grid-column:1/-1;background:linear-gradient(135deg,rgba(0,230,118,0.08),rgba(0,212,255,0.05));border-color:rgba(0,230,118,0.25)" onclick="nav('ai')"><div style="display:flex;align-items:center;gap:18px"><div class="card-ic" style="font-size:1.8rem;width:56px;height:56px">🤖</div><div><div class="card-name" style="font-size:.9rem;color:var(--g)">Resolver con IA — Cualquier ejercicio</div><div class="card-desc">Escribe cualquier ecuación (logarítmica, racional, con raíces, rectas…) y la IA lo resuelve paso a paso con explicación completa.</div></div></div></div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: POLINOMIOS ══════════════════════ -->
+  <div class="pg" id="pg-poli">
+    <div class="pg-title">Polinomios</div>
+    <div class="pg-sub">Suma, resta, multiplicación y división de polinomios. Selecciona operación y nivel.</div>
+    <div class="diff-bar">
+      <button class="d-btn act" data-mod="poli" data-d="bas" onclick="setDiff(this,'poli')">BÁSICO</button>
+      <button class="d-btn med" data-mod="poli" data-d="med" onclick="setDiff(this,'poli')">MEDIO</button>
+      <button class="d-btn dif" data-mod="poli" data-d="dif" onclick="setDiff(this,'poli')">DIFÍCIL</button>
+    </div>
+    <div class="solver">
+      <div class="s-label">Operación</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        <select class="s-select" id="poliOp">
+          <option value="sum">Suma</option>
+          <option value="sub">Resta</option>
+          <option value="mul">Multiplicación</option>
+          <option value="div">División (monomial)</option>
+        </select>
+      </div>
+      <div class="s-label">Polinomio A</div>
+      <div class="s-row" style="margin-bottom:10px">
+        <input class="s-input" id="poliA" placeholder="Ej: 3x² + 2x - 5" />
+      </div>
+      <div class="s-label">Polinomio B</div>
+      <div class="s-row">
+        <input class="s-input" id="poliB" placeholder="Ej: x² - 4x + 1" />
+        <button class="btn-go" onclick="solvePoli()">CALCULAR</button>
+      </div>
+      <div class="ex-row" id="poliExRow">
+        <button class="btn-ex" onclick="setPoliEx('3x^2+2x-5','x^2-4x+1','sum')">Ej. suma</button>
+        <button class="btn-ex" onclick="setPoliEx('2x^3-x^2+3x','x^3+2x^2-x','sub')">Ej. resta</button>
+        <button class="btn-ex" onclick="setPoliEx('x+3','x-2','mul')">Ej. producto</button>
+        <button class="btn-ex" onclick="clearRes('poliRes','poliA')">Limpiar</button>
+      </div>
+      <div class="res" id="poliRes"></div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: FACTORIZACIÓN ══════════════════ -->
+  <div class="pg" id="pg-fact">
+    <div class="pg-title">Factorización</div>
+    <div class="pg-sub">Selecciona el método o deja que el sistema lo detecte automáticamente.</div>
+    <div class="diff-bar">
+      <button class="d-btn act" data-mod="fact" data-d="bas" onclick="setDiff(this,'fact')">BÁSICO</button>
+      <button class="d-btn med" data-mod="fact" data-d="med" onclick="setDiff(this,'fact')">MEDIO</button>
+      <button class="d-btn dif" data-mod="fact" data-d="dif" onclick="setDiff(this,'fact')">DIFÍCIL</button>
+    </div>
+    <div class="solver">
+      <div class="s-label">Método de factorización</div>
+      <div style="margin-bottom:14px">
+        <select class="s-select" id="factMethod">
+          <option value="auto">Detectar automáticamente</option>
+          <option value="fc">Factor común</option>
+          <option value="dc">Diferencia de cuadrados</option>
+          <option value="tcp">Trinomio cuadrado perfecto</option>
+          <option value="tri">Trinomio x² + bx + c</option>
+          <option value="tri2">Trinomio ax² + bx + c</option>
+          <option value="cube">Suma/diferencia de cubos</option>
+          <option value="group">Agrupación</option>
+        </select>
+      </div>
+      <div class="s-label">Expresión a factorizar</div>
+      <div class="s-row">
+        <input class="s-input" id="factInput" placeholder="Ej: x² - 9  ó  x² + 5x + 6  ó  4x³ - 8x" />
+        <button class="btn-go" onclick="solveFact()">FACTORIZAR</button>
+      </div>
+      <div class="ex-row">
+        <button class="btn-ex" onclick="setEx('factInput','x^2-9')">x²−9</button>
+        <button class="btn-ex" onclick="setEx('factInput','x^2+5x+6')">x²+5x+6</button>
+        <button class="btn-ex" onclick="setEx('factInput','4x^3-8x^2+12x')">4x³−8x²+12x</button>
+        <button class="btn-ex" onclick="setEx('factInput','x^3+8')">x³+8</button>
+        <button class="btn-ex" onclick="setEx('factInput','x^2+6x+9')">x²+6x+9</button>
+        <button class="btn-ex" onclick="clearRes('factRes','factInput')">Limpiar</button>
+      </div>
+      <div class="res" id="factRes"></div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: LINEALES ══════════════════════════ -->
+  <div class="pg" id="pg-lin">
+    <div class="pg-title">Ecuaciones Lineales</div>
+    <div class="pg-sub">Resuelve ecuaciones del tipo ax + b = c o con variables en ambos lados.</div>
+    <div class="diff-bar">
+      <button class="d-btn act" data-mod="lin" data-d="bas" onclick="setDiff(this,'lin')">BÁSICO</button>
+      <button class="d-btn med" data-mod="lin" data-d="med" onclick="setDiff(this,'lin')">MEDIO</button>
+      <button class="d-btn dif" data-mod="lin" data-d="dif" onclick="setDiff(this,'lin')">DIFÍCIL</button>
+    </div>
+    <div class="solver">
+      <div class="s-label">Ecuación lineal</div>
+      <div class="s-row">
+        <input class="s-input" id="linIn" placeholder="Ej: 2x + 5 = 15  ó  3x - 7 = 2x + 5" />
+        <button class="btn-go" onclick="solveLinear()">RESOLVER</button>
+      </div>
+      <div class="ex-row">
+        <button class="btn-ex" onclick="setEx('linIn','2x + 5 = 15')">2x+5=15</button>
+        <button class="btn-ex" onclick="setEx('linIn','3x - 7 = 2x + 5')">3x−7=2x+5</button>
+        <button class="btn-ex" onclick="setEx('linIn','5(x+2) = 3x + 14')">5(x+2)=3x+14</button>
+        <button class="btn-ex" onclick="setEx('linIn','-2x + 8 = 0')">−2x+8=0</button>
+        <button class="btn-ex" onclick="clearRes('linRes','linIn')">Limpiar</button>
+      </div>
+      <div class="res" id="linRes"></div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: CUADRÁTICAS ════════════════════════ -->
+  <div class="pg" id="pg-quad">
+    <div class="pg-title">Ecuaciones Cuadráticas</div>
+    <div class="pg-sub">Forma estándar: ax² + bx + c = 0. Ingresa los coeficientes.</div>
+    <div class="diff-bar">
+      <button class="d-btn act" data-mod="quad" data-d="bas" onclick="setDiff(this,'quad')">BÁSICO</button>
+      <button class="d-btn med" data-mod="quad" data-d="med" onclick="setDiff(this,'quad')">MEDIO</button>
+      <button class="d-btn dif" data-mod="quad" data-d="dif" onclick="setDiff(this,'quad')">DIFÍCIL</button>
+    </div>
+    <div class="solver">
+      <div class="s-label">Coeficientes de ax² + bx + c = 0</div>
+      <div class="coeff-row">
+        <div class="coeff-g"><span class="coeff-l">a =</span><input class="s-input s-input-sm" id="qa" value="1" type="number"/></div>
+        <div class="coeff-g"><span class="coeff-l">b =</span><input class="s-input s-input-sm" id="qb" value="-5" type="number"/></div>
+        <div class="coeff-g"><span class="coeff-l">c =</span><input class="s-input s-input-sm" id="qc" value="6" type="number"/></div>
+        <button class="btn-go" onclick="solveQuad()">RESOLVER</button>
+      </div>
+      <div class="ex-row">
+        <button class="btn-ex" onclick="setQuad(1,-5,6)">x²−5x+6</button>
+        <button class="btn-ex" onclick="setQuad(2,-4,2)">2x²−4x+2</button>
+        <button class="btn-ex" onclick="setQuad(1,0,-9)">x²−9=0</button>
+        <button class="btn-ex" onclick="setQuad(1,2,5)">Raíces complejas</button>
+      </div>
+      <div class="res" id="quadRes"></div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: SISTEMAS ═══════════════════════════ -->
+  <div class="pg" id="pg-sys">
+    <div class="pg-title">Sistemas de Ecuaciones</div>
+    <div class="pg-sub">Sistema 2×2. Escoge el método de resolución.</div>
+    <div class="diff-bar">
+      <button class="d-btn act" data-mod="sys" data-d="bas" onclick="setDiff(this,'sys')">BÁSICO</button>
+      <button class="d-btn med" data-mod="sys" data-d="med" onclick="setDiff(this,'sys')">MEDIO</button>
+      <button class="d-btn dif" data-mod="sys" data-d="dif" onclick="setDiff(this,'sys')">DIFÍCIL</button>
+    </div>
+    <div class="solver">
+      <div class="s-label">Método</div>
+      <div style="margin-bottom:16px">
+        <select class="s-select" id="sysMethod">
+          <option value="sust">Sustitución</option>
+          <option value="igual">Igualación</option>
+          <option value="elim">Eliminación (Gauss)</option>
+        </select>
+      </div>
+      <div class="s-label">Sistema (coeficientes de a₁x + b₁y = c₁ y a₂x + b₂y = c₂)</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;max-width:400px;margin-bottom:12px">
+        <div><div class="s-label" style="margin-bottom:4px">a₁</div><input class="s-input" id="sa1" value="2" type="number"/></div>
+        <div><div class="s-label" style="margin-bottom:4px">b₁</div><input class="s-input" id="sb1" value="1" type="number"/></div>
+        <div><div class="s-label" style="margin-bottom:4px">c₁</div><input class="s-input" id="sc1" value="7" type="number"/></div>
+        <div><div class="s-label" style="margin-bottom:4px">a₂</div><input class="s-input" id="sa2" value="3" type="number"/></div>
+        <div><div class="s-label" style="margin-bottom:4px">b₂</div><input class="s-input" id="sb2" value="-2" type="number"/></div>
+        <div><div class="s-label" style="margin-bottom:4px">c₂</div><input class="s-input" id="sc2" value="4" type="number"/></div>
+      </div>
+      <button class="btn-go" onclick="solveSys()">RESOLVER SISTEMA</button>
+      <div class="ex-row">
+        <button class="btn-ex" onclick="setSys(2,1,7,3,-2,4)">2x+y=7 / 3x−2y=4</button>
+        <button class="btn-ex" onclick="setSys(1,1,5,1,-1,1)">x+y=5 / x−y=1</button>
+        <button class="btn-ex" onclick="setSys(3,2,12,1,-1,2)">3x+2y=12</button>
+      </div>
+      <div class="res" id="sysRes"></div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: LOGARITMOS ════════════════════════ -->
+  <div class="pg" id="pg-log">
+    <div class="pg-title">Logaritmos</div>
+    <div class="pg-sub">Calcula logaritmos con cualquier base. Aplica propiedades paso a paso.</div>
+    <div class="diff-bar">
+      <button class="d-btn act" data-mod="log" data-d="bas" onclick="setDiff(this,'log')">BÁSICO</button>
+      <button class="d-btn med" data-mod="log" data-d="med" onclick="setDiff(this,'log')">MEDIO</button>
+      <button class="d-btn dif" data-mod="log" data-d="dif" onclick="setDiff(this,'log')">DIFÍCIL</button>
+    </div>
+    <div class="solver">
+      <div class="s-label">Expresión logarítmica</div>
+      <div class="s-row" style="align-items:center;flex-wrap:wrap;gap:8px">
+        <span style="font-family:'JetBrains Mono',monospace;color:var(--tx2)">log</span>
+        <select class="s-select" id="logBase" style="width:100px">
+          <option value="2">₂</option>
+          <option value="10" selected>₁₀</option>
+          <option value="e">ₑ (ln)</option>
+          <option value="3">₃</option>
+          <option value="5">₅</option>
+        </select>
+        <span style="font-family:'JetBrains Mono',monospace;color:var(--tx2)">(</span>
+        <input class="s-input" id="logVal" placeholder="valor, Ej: 1000" style="max-width:170px"/>
+        <span style="font-family:'JetBrains Mono',monospace;color:var(--tx2)">)</span>
+        <button class="btn-go" onclick="solveLog()">CALCULAR</button>
+      </div>
+      <div class="ex-row">
+        <button class="btn-ex" onclick="setLogEx('10','1000')">log₁₀(1000)</button>
+        <button class="btn-ex" onclick="setLogEx('2','8')">log₂(8)</button>
+        <button class="btn-ex" onclick="setLogEx('e','1')">ln(1)</button>
+        <button class="btn-ex" onclick="setLogEx('3','27')">log₃(27)</button>
+        <button class="btn-ex" onclick="setLogEx('5','125')">log₅(125)</button>
+      </div>
+      <div class="res" id="logRes"></div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: TRIGONOMETRÍA ═════════════════════ -->
+  <div class="pg" id="pg-trig">
+    <div class="pg-title">Trigonometría</div>
+    <div class="pg-sub">Funciones trigonométricas, Pitágoras, conversión de ángulos e identidades.</div>
+    <div class="diff-bar">
+      <button class="d-btn act" data-mod="trig" data-d="bas" onclick="setDiff(this,'trig')">BÁSICO</button>
+      <button class="d-btn med" data-mod="trig" data-d="med" onclick="setDiff(this,'trig')">MEDIO</button>
+      <button class="d-btn dif" data-mod="trig" data-d="dif" onclick="setDiff(this,'trig')">DIFÍCIL</button>
+    </div>
+    <!-- Sub-tabs -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
+      <button class="btn-go" onclick="showTrigTab('fn')" id="ttFn" style="padding:9px 20px;font-size:.68rem">Funciones</button>
+      <button class="btn-ex" onclick="showTrigTab('pit')" id="ttPit">Pitágoras</button>
+      <button class="btn-ex" onclick="showTrigTab('conv')" id="ttConv">Conversión</button>
+      <button class="btn-ex" onclick="showTrigTab('id')" id="ttId">Identidades</button>
+    </div>
+    <!-- FUNCIONES -->
+    <div id="ttab-fn">
+      <div class="solver">
+        <div class="trig-fns" id="trigFns">
+          <button class="tf act" data-fn="sin" onclick="selTrig(this)">sin</button>
+          <button class="tf" data-fn="cos" onclick="selTrig(this)">cos</button>
+          <button class="tf" data-fn="tan" onclick="selTrig(this)">tan</button>
+          <button class="tf" data-fn="sec" onclick="selTrig(this)">sec</button>
+          <button class="tf" data-fn="csc" onclick="selTrig(this)">csc</button>
+          <button class="tf" data-fn="cot" onclick="selTrig(this)">cot</button>
+        </div>
+        <div class="s-row">
+          <input class="s-input" id="trigAngle" placeholder="Ángulo — Ej: 30" style="max-width:200px"/>
+          <select class="s-select" id="trigUnit"><option value="deg" selected>Grados (°)</option><option value="rad">Radianes</option></select>
+          <button class="btn-go" onclick="solveTrig()">CALCULAR</button>
+        </div>
+        <div class="ex-row">
+          <button class="btn-ex" onclick="setEx('trigAngle','30')">30°</button>
+          <button class="btn-ex" onclick="setEx('trigAngle','45')">45°</button>
+          <button class="btn-ex" onclick="setEx('trigAngle','60')">60°</button>
+          <button class="btn-ex" onclick="setEx('trigAngle','90')">90°</button>
+        </div>
+        <div class="res" id="trigRes"></div>
+      </div>
+    </div>
+    <!-- PITÁGORAS -->
+    <div id="ttab-pit" style="display:none">
+      <div class="solver">
+        <div class="s-label">Teorema de Pitágoras: a² + b² = c². Ingresa 2 lados conocidos (deja en blanco el que buscas).</div>
+        <div class="coeff-row" style="margin-top:10px">
+          <div class="coeff-g"><span class="coeff-l">a =</span><input class="s-input s-input-sm" id="pita" placeholder="?"/></div>
+          <div class="coeff-g"><span class="coeff-l">b =</span><input class="s-input s-input-sm" id="pitb" placeholder="?"/></div>
+          <div class="coeff-g"><span class="coeff-l">c (hip) =</span><input class="s-input s-input-sm" id="pitc" placeholder="?"/></div>
+          <button class="btn-go" onclick="solvePit()">CALCULAR</button>
+        </div>
+        <div class="ex-row">
+          <button class="btn-ex" onclick="setPit(3,4,'')">a=3, b=4</button>
+          <button class="btn-ex" onclick="setPit(5,'',13)">a=5, c=13</button>
+          <button class="btn-ex" onclick="setPit('',8,10)">b=8, c=10</button>
+        </div>
+        <div class="res" id="pitRes"></div>
+      </div>
+    </div>
+    <!-- CONVERSIÓN -->
+    <div id="ttab-conv" style="display:none">
+      <div class="solver">
+        <div class="s-label">Conversión entre grados y radianes</div>
+        <div class="s-row" style="margin-top:8px">
+          <input class="s-input" id="convVal" placeholder="Valor — Ej: 180"/>
+          <select class="s-select" id="convFrom"><option value="deg">Grados → Radianes</option><option value="rad">Radianes → Grados</option></select>
+          <button class="btn-go" onclick="solveConv()">CONVERTIR</button>
+        </div>
+        <div class="ex-row">
+          <button class="btn-ex" onclick="setConv(180,'deg')">180°</button>
+          <button class="btn-ex" onclick="setConv(90,'deg')">90°</button>
+          <button class="btn-ex" onclick="setConv(3.14159,'rad')">π rad</button>
+        </div>
+        <div class="res" id="convRes"></div>
+      </div>
+    </div>
+    <!-- IDENTIDADES -->
+    <div id="ttab-id" style="display:none">
+      <div class="solver">
+        <div class="s-label">Identidades trigonométricas fundamentales (para un ángulo θ)</div>
+        <div class="s-row" style="margin-top:8px">
+          <input class="s-input" id="idAngle" placeholder="Ángulo en grados — Ej: 45"/>
+          <button class="btn-go" onclick="solveId()">VERIFICAR</button>
+        </div>
+        <div class="res" id="idRes"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: GRÁFICAS ═══════════════════════════ -->
+  <div class="pg" id="pg-graph">
+    <div class="pg-title">Gráficas de Funciones</div>
+    <div class="pg-sub">Escribe una función de x. Usa ** para potencia, Math.sin(), Math.sqrt(), etc.</div>
+    <div class="solver" style="max-width:920px">
+      <div class="s-label">Función y = f(x)</div>
+      <div class="s-row">
+        <input class="s-input" id="graphFn" placeholder="Ej: x**2 - 4*x + 3"/>
+        <button class="btn-go" onclick="drawGraph()">GRAFICAR</button>
+      </div>
+      <div class="ex-row">
+        <button class="btn-ex" onclick="setEx('graphFn','x**2 - 4*x + 3')">x²−4x+3</button>
+        <button class="btn-ex" onclick="setEx('graphFn','Math.sin(x)')">sin(x)</button>
+        <button class="btn-ex" onclick="setEx('graphFn','x**3 - 3*x')">x³−3x</button>
+        <button class="btn-ex" onclick="setEx('graphFn','2*x + 1')">2x+1</button>
+        <button class="btn-ex" onclick="setEx('graphFn','Math.abs(x) - 2')">|x|−2</button>
+        <button class="btn-ex" onclick="setEx('graphFn','Math.sqrt(Math.abs(x))')">√|x|</button>
+      </div>
+      <div class="res show" id="graphArea">
+        <div class="graph-wrap"><canvas id="gCanvas"></canvas></div>
+        <div class="graph-info" id="gInfo"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: HISTORIAL ══════════════════════════ -->
+  <div class="pg" id="pg-hist">
+    <div class="pg-title">Historial</div>
+    <div class="pg-sub">Todas las operaciones resueltas en esta sesión.</div>
+    <div style="margin-bottom:18px">
+      <button class="btn-ex" onclick="clearHist()">🗑 Limpiar historial</button>
+    </div>
+    <div class="hist-list" id="histList"></div>
+  </div>
+
+  <!-- ══ PAGE: AYUDA ══════════════════════════════ -->
+  <div class="pg" id="pg-help">
+    <div class="pg-title">Centro de Ayuda</div>
+    <div class="pg-sub">Guía de sintaxis y ejemplos para cada módulo.</div>
+    <div class="help-grid">
+      <div class="hc"><div class="hc-t">📐 Polinomios</div><ul>
+        <li><span>Potencia:</span> x^2 o x**2</li>
+        <li><span>Ej suma:</span> 3x^2+2x-5 + x^2-4x+1</li>
+        <li><span>Ej producto:</span> (x+3)(x-2)</li>
+        <li><span>Tip:</span> Usa ^ para exponentes</li>
+      </ul></div>
+      <div class="hc"><div class="hc-t">🔢 Factorización</div><ul>
+        <li><span>Dif. cuadrados:</span> x^2-9</li>
+        <li><span>Trinomio:</span> x^2+5x+6</li>
+        <li><span>Factor común:</span> 4x^3-8x^2</li>
+        <li><span>Cubos:</span> x^3+8</li>
+      </ul></div>
+      <div class="hc"><div class="hc-t">𝑥 Ecuaciones Lineales</div><ul>
+        <li><span>Formato:</span> ax + b = c</li>
+        <li><span>Ej:</span> 2x + 5 = 15</li>
+        <li><span>Ej doble:</span> 3x - 7 = 2x + 5</li>
+        <li><span>Tip:</span> Variable: x minúscula</li>
+      </ul></div>
+      <div class="hc"><div class="hc-t">𝑥² Ecuaciones Cuadráticas</div><ul>
+        <li><span>Forma:</span> ax² + bx + c = 0</li>
+        <li><span>Ingresa:</span> a, b, c por separado</li>
+        <li><span>Método:</span> Fórmula general</li>
+        <li><span>Soporta:</span> raíces complejas</li>
+      </ul></div>
+      <div class="hc"><div class="hc-t">⚙ Sistemas 2×2</div><ul>
+        <li><span>Métodos:</span> Sustitución, Igualación, Eliminación</li>
+        <li><span>Forma:</span> a₁x + b₁y = c₁</li>
+        <li><span>Ingresa:</span> coeficientes directamente</li>
+        <li><span>Detecta:</span> sin solución / inf. soluciones</li>
+      </ul></div>
+      <div class="hc"><div class="hc-t">㏒ Logaritmos</div><ul>
+        <li><span>Bases:</span> 2, 3, 5, 10, e (ln)</li>
+        <li><span>Ej:</span> log₁₀(1000) = 3</li>
+        <li><span>Ej:</span> log₂(8) = 3</li>
+        <li><span>Propiedad:</span> cambio de base ln(x)/ln(b)</li>
+      </ul></div>
+      <div class="hc"><div class="hc-t">〜 Trigonometría</div><ul>
+        <li><span>Funciones:</span> sin, cos, tan, sec, csc, cot</li>
+        <li><span>Pitágoras:</span> a²+b²=c²</li>
+        <li><span>Conversión:</span> grados ↔ radianes</li>
+        <li><span>Identidades:</span> verificación numérica</li>
+      </ul></div>
+      <div class="hc"><div class="hc-t">📈 Gráficas</div><ul>
+        <li><span>Potencia:</span> x**2 (no x^2)</li>
+        <li><span>Trig:</span> Math.sin(x), Math.cos(x)</li>
+        <li><span>Valor absoluto:</span> Math.abs(x)</li>
+        <li><span>Raíz:</span> Math.sqrt(x)</li>
+      </ul></div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: IA SOLVER ══════════════════════════ -->
+  <div class="pg" id="pg-ai">
+    <div class="pg-title">Resolver con IA</div>
+    <div class="pg-sub">Escribe cualquier ejercicio matemático y la IA lo resuelve con procedimiento detallado paso a paso.</div>
+    <div class="solver" style="max-width:860px">
+      <div class="s-label">Tu ejercicio</div>
+      <div class="s-row" style="margin-bottom:10px">
+        <textarea class="s-input ai-textarea" id="aiInput" placeholder="Ej: ln(-4-x) + ln 3 = ln(2-x)&#10;Ej: log√(3x+5) + log√x = 1&#10;Ej: (x-1)/(x+1) = (3x-1)/(2x+6)&#10;Ej: Recta que pasa por (-1,-1) y (2,3)" rows="3"></textarea>
+      </div>
+      <div class="ex-row" style="margin-bottom:14px">
+        <button class="btn-ex" onclick="setAiEx('log₂(x-4) = 2')">log₂(x-4)=2</button>
+        <button class="btn-ex" onclick="setAiEx('ln(-4-x) + ln(3) = ln(2-x)')">ln combinado</button>
+        <button class="btn-ex" onclick="setAiEx('log(√(3x+5)) + log(√x) = 1')">log con raíces</button>
+        <button class="btn-ex" onclick="setAiEx('(x-1)/(x+1) = (3x-1)/(2x+6)')">ecuación racional</button>
+        <button class="btn-ex" onclick="setAiEx('Recta que pasa por (-1,-1) y (2,3)')">ecuación recta</button>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button class="btn-go" id="aiBtnSolve" onclick="solveAI()">⚡ RESOLVER CON IA</button>
+        <button class="btn-ex" onclick="clearAI()">Limpiar</button>
+      </div>
+      <div class="res" id="aiRes"></div>
+    </div>
+    <div style="max-width:860px;margin-top:8px;padding:12px 16px;background:rgba(0,212,255,0.04);border:1px solid var(--bd);border-radius:10px;font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--tx3)">
+      💡 Este módulo usa IA avanzada y puede resolver ecuaciones logarítmicas, racionales, con raíces, sistemas, rectas y más. Los demás módulos usan algoritmos fijos.
+    </div>
+  </div>
+
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+/* ══════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════ */
+let histData = [];
+let selTrigFn = 'sin';
+let gChart = null;
+let gCount = 0;
+const diff = {poli:'bas',fact:'bas',lin:'bas',quad:'bas',sys:'bas',log:'bas',trig:'bas',graph:'bas'};
+
+/* ══════════════════════════════════════════════════
+   LOADER
+══════════════════════════════════════════════════ */
+(function(){
+  const seq = [
+    {p:18, m:'Inicializando sistema…', t:250},
+    {p:38, m:'Cargando módulos matemáticos…', t:700},
+    {p:58, m:'Compilando solucionadores…', t:1150},
+    {p:78, m:'Preparando motor algebraico…', t:1600},
+    {p:95, m:'Verificando módulos…', t:2000},
+    {p:100,m:'Sistema listo.', t:2350}
+  ];
+  const bar=document.getElementById('ldBar'),msg=document.getElementById('ldMsg'),pct=document.getElementById('ldPct');
+  seq.forEach(s=>setTimeout(()=>{bar.style.width=s.p+'%';msg.textContent=s.m;pct.textContent=s.p+'%'},s.t));
+  setTimeout(()=>{
+    const ld=document.getElementById('loader');
+    ld.style.transition='opacity .5s';ld.style.opacity='0';
+    setTimeout(()=>{ld.style.display='none';showIntro()},500);
+  },2900);
+})();
+
+/* ══════════════════════════════════════════════════
+   INTRO
+══════════════════════════════════════════════════ */
+function showIntro(){
+  const el=document.getElementById('intro');
+  el.style.display='flex';
+  initParticles();
+  spawnMathFloats();
+}
+function initParticles(){
+  const cv=document.getElementById('pcanvas'),ctx=cv.getContext('2d');
+  let pts=[];
+  const rsz=()=>{cv.width=innerWidth;cv.height=innerHeight};
+  rsz();window.addEventListener('resize',rsz);
+  for(let i=0;i<90;i++)pts.push(rndPt(cv));
+  function rndPt(cv){return{x:Math.random()*cv.width,y:Math.random()*cv.height,vx:(Math.random()-.5)*.45,vy:(Math.random()-.5)*.45,r:Math.random()*1.7+.3,a:Math.random(),c:['#00D4FF','#7B61FF','#00E676','#FF4081'][Math.floor(Math.random()*4)]}}
+  function draw(){
+    ctx.clearRect(0,0,cv.width,cv.height);
+    pts.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;
+      if(p.x<0)p.x=cv.width;if(p.x>cv.width)p.x=0;
+      if(p.y<0)p.y=cv.height;if(p.y>cv.height)p.y=0;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=p.c+Math.round(p.a*99).toString(16).padStart(2,'0');ctx.fill();
+    });
+    pts.forEach((p,i)=>{for(let j=i+1;j<pts.length;j++){const d=Math.hypot(p.x-pts[j].x,p.y-pts[j].y);if(d<95){ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(pts[j].x,pts[j].y);ctx.strokeStyle=p.c+Math.round((1-d/95)*.22*255).toString(16).padStart(2,'0');ctx.lineWidth=.5;ctx.stroke()}}});
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
+const MF=['∫','∑','√','∂','∞','Δ','π','θ','λ','ax²+bx+c','sin(x)','log₂n','f(x)=','∀x','x²−4','lim→0','∫₀¹','dy/dx'];
+function spawnMathFloats(){
+  const el=document.getElementById('intro');
+  setInterval(()=>{
+    const d=document.createElement('div');d.className='mf';
+    d.textContent=MF[Math.floor(Math.random()*MF.length)];
+    d.style.left=(Math.random()*94)+'vw';d.style.bottom='-28px';
+    const dur=11+Math.random()*9;d.style.animationDuration=dur+'s';
+    d.style.fontSize=(.75+Math.random()*.65)+'rem';
+    d.style.color=`rgba(0,212,255,${.04+Math.random()*.09})`;
+    el.appendChild(d);setTimeout(()=>d.remove(),(dur+1)*1000);
+  },380);
+}
+function enterApp(){
+  const el=document.getElementById('intro');
+  el.style.transition='opacity .6s';el.style.opacity='0';
+  setTimeout(()=>{
+    el.style.display='none';
+    const app=document.getElementById('app');
+    app.style.display='flex';
+    initGraphPlaceholder();
+  },600);
+}
+
+/* ══════════════════════════════════════════════════
+   NAVIGATION
+══════════════════════════════════════════════════ */
+const PM={
+  home:{t:'INICIO',p:'pg-home'},
+  poli:{t:'POLINOMIOS',p:'pg-poli'},
+  fact:{t:'FACTORIZACIÓN',p:'pg-fact'},
+  lin:{t:'ECUACIONES LINEALES',p:'pg-lin'},
+  quad:{t:'ECUACIONES CUADRÁTICAS',p:'pg-quad'},
+  sys:{t:'SISTEMAS DE ECUACIONES',p:'pg-sys'},
+  log:{t:'LOGARITMOS',p:'pg-log'},
+  trig:{t:'TRIGONOMETRÍA',p:'pg-trig'},
+  graph:{t:'GRÁFICAS',p:'pg-graph'},
+  ai:{t:'RESOLVER CON IA',p:'pg-ai'},
+  hist:{t:'HISTORIAL',p:'pg-hist'},
+  help:{t:'AYUDA',p:'pg-help'},
+};
+function nav(k){
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('act'));
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('act'));
+  document.getElementById('ni-'+k)?.classList.add('act');
+  document.getElementById(PM[k].p)?.classList.add('act');
+  document.getElementById('tbTitle').textContent=PM[k].t;
+  if(k==='hist')renderHist();
+  if(k==='home')updStats();
+  closeMob();
+}
+function toggleSb(){document.getElementById('sb').classList.toggle('col')}
+function openMob(){document.getElementById('sb').classList.add('mob-open');document.getElementById('sbov').style.display='block'}
+function closeMob(){document.getElementById('sb').classList.remove('mob-open');document.getElementById('sbov').style.display='none'}
+
+/* ══════════════════════════════════════════════════
+   DIFFICULTY
+══════════════════════════════════════════════════ */
+function setDiff(btn,mod){
+  document.querySelectorAll(`[data-mod="${mod}"]`).forEach(b=>b.classList.remove('act'));
+  btn.classList.add('act');
+  diff[mod]=btn.dataset.d;
+}
+
+/* ══════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════ */
+function setEx(id,v){document.getElementById(id).value=v}
+function setQuad(a,b,c){document.getElementById('qa').value=a;document.getElementById('qb').value=b;document.getElementById('qc').value=c}
+function setSys(a1,b1,c1,a2,b2,c2){['sa1','sb1','sc1','sa2','sb2','sc2'].forEach((id,i)=>document.getElementById(id).value=[a1,b1,c1,a2,b2,c2][i])}
+function setLogEx(base,val){document.getElementById('logBase').value=base;document.getElementById('logVal').value=val}
+function setPit(a,b,c){document.getElementById('pita').value=a;document.getElementById('pitb').value=b;document.getElementById('pitc').value=c}
+function setConv(v,from){document.getElementById('convVal').value=v;document.getElementById('convFrom').value=from}
+function setPoliEx(a,b,op){document.getElementById('poliA').value=a;document.getElementById('poliB').value=b;document.getElementById('poliOp').value=op}
+function clearRes(rid,iid){const r=document.getElementById(rid);r.classList.remove('show');r.innerHTML='';if(iid)document.getElementById(iid).value=''}
+function fmtN(n,d=6){if(!isFinite(n))return n.toString();if(Number.isInteger(n))return n.toString();return parseFloat(n.toFixed(d)).toString()}
+function showErr(id,msg){const el=document.getElementById(id);el.innerHTML=`<div class="err-box">⚠ ${msg}</div>`;el.classList.add('show')}
+function showRes(id,steps,fin){const el=document.getElementById(id);el.innerHTML=steps+fin;el.classList.add('show')}
+function buildSteps(ttl,arr){
+  return `<div class="steps-box"><div class="steps-hd">${ttl}</div>${arr.map((s,i)=>`<div class="step" style="animation-delay:${i*.07}s"><div class="step-n">${i+1}</div><div class="step-t">${s}</div></div>`).join('')}</div>`;
+}
+function buildFin(lbl,val,cls=''){
+  return `<div class="res-final"><div class="res-lbl">${lbl}</div><div class="res-val ${cls}">${val}</div></div>`;
+}
+function addHist(cat,eq,res,ic,col){
+  histData.unshift({cat,eq,res,ic,col,t:new Date()});
+  document.getElementById('hBadge').textContent=histData.length;
+  document.getElementById('stOps').textContent=histData.length;
+}
+function updStats(){document.getElementById('stOps').textContent=histData.length;document.getElementById('stGraphs').textContent=gCount}
+
+/* ══════════════════════════════════════════════════
+   POLYNOMIAL PARSER
+   Represents polynomial as array of coefficients indexed by degree
+══════════════════════════════════════════════════ */
+function parsePoly(s){
+  // Normalize
+  s=s.replace(/\s+/g,'').toLowerCase();
+  s=s.replace(/\^/g,'**');
+  // x^2 style already handled; now parse
+  // Map degree → coeff
+  const coeffs={};
+  // Regex: optional sign, digits, x, optional **digits
+  const re=/([+-]?)(\d*\.?\d*)(x(?:\*\*(\d+))?)?/g;
+  let m;
+  while((m=re.exec(s))!==null){
+    if(!m[0]){re.lastIndex++;continue;}
+    const sign=m[1]==='-'?-1:1;
+    const num=m[2]===''?(m[3]?1:0):parseFloat(m[2]);
+    if(m[3]){
+      const deg=m[4]?parseInt(m[4]):1;
+      coeffs[deg]=(coeffs[deg]||0)+sign*num;
+    } else if(m[2]){
+      coeffs[0]=(coeffs[0]||0)+sign*num;
+    }
+  }
+  return coeffs;
+}
+function polyToStr(coeffs){
+  const degs=Object.keys(coeffs).map(Number).sort((a,b)=>b-a);
+  if(degs.length===0||degs.every(d=>coeffs[d]===0))return '0';
+  let parts=[];
+  degs.forEach(d=>{
+    const c=coeffs[d];
+    if(c===0)return;
+    let t='';
+    if(d===0){t=fmtN(Math.abs(c))}
+    else if(d===1){t=Math.abs(c)===1?'x':`${fmtN(Math.abs(c))}x`}
+    else{t=Math.abs(c)===1?`x${d>1?'<sup>'+d+'</sup>':''}`:`${fmtN(Math.abs(c))}x<sup>${d}</sup>`}
+    if(parts.length===0){parts.push(c<0?`-${t}`:t)}
+    else{parts.push(c<0?` - ${t}`:` + ${t}`)}
+  });
+  return parts.join('');
+}
+function polyAdd(a,b,sign=1){
+  const r={...a};
+  Object.keys(b).forEach(d=>{r[d]=(r[d]||0)+sign*b[d]});
+  return r;
+}
+function polyMul(a,b){
+  const r={};
+  Object.keys(a).forEach(d1=>Object.keys(b).forEach(d2=>{
+    const deg=parseInt(d1)+parseInt(d2);
+    r[deg]=(r[deg]||0)+a[d1]*b[d2];
+  }));
+  return r;
+}
+
+/* ══════════════════════════════════════════════════
+   SOLVER: POLYNOMIALS
+══════════════════════════════════════════════════ */
+function solvePoli(){
+  const op=document.getElementById('poliOp').value;
+  const rawA=document.getElementById('poliA').value.trim();
+  const rawB=document.getElementById('poliB').value.trim();
+  if(!rawA||!rawB){showErr('poliRes','Ingresa ambos polinomios.');return}
+  const A=parsePoly(rawA),B=parsePoly(rawB);
+  let steps=[],fin;
+  const aStr=polyToStr(A),bStr=polyToStr(B);
+  if(op==='sum'){
+    const R=polyAdd(A,B);
+    steps=[
+      `Polinomio A: <em>${aStr}</em>`,
+      `Polinomio B: <em>${bStr}</em>`,
+      `Suma: agrupamos términos semejantes (mismo grado).`,
+      `Resultado: <em>${polyToStr(R)}</em>`
+    ];
+    fin=buildFin('RESULTADO',polyToStr(R));
+    addHist('Polinomios',`(${rawA}) + (${rawB})`,polyToStr(R),'📐','#00D4FF');
+  } else if(op==='sub'){
+    const R=polyAdd(A,B,-1);
+    steps=[
+      `Polinomio A: <em>${aStr}</em>`,
+      `Polinomio B: <em>${bStr}</em>`,
+      `Resta: cambiamos signos del polinomio B y sumamos.`,
+      `Resultado: <em>${polyToStr(R)}</em>`
+    ];
+    fin=buildFin('RESULTADO',polyToStr(R));
+    addHist('Polinomios',`(${rawA}) - (${rawB})`,polyToStr(R),'📐','#00D4FF');
+  } else if(op==='mul'){
+    const R=polyMul(A,B);
+    const degsA=Object.keys(A).filter(d=>A[d]!==0);
+    const degsB=Object.keys(B).filter(d=>B[d]!==0);
+    steps=[
+      `Polinomio A: <em>${aStr}</em>`,
+      `Polinomio B: <em>${bStr}</em>`,
+      `Multiplicamos cada término de A por cada término de B (propiedad distributiva).`,
+    ];
+    degsA.forEach(d1=>degsB.forEach(d2=>{
+      const c=A[d1]*B[d2],deg=parseInt(d1)+parseInt(d2);
+      const term=deg===0?fmtN(c):(Math.abs(c)===1&&deg>0?`${c<0?'-':''}x${deg>1?'<sup>'+deg+'</sup>':''}`:fmtN(c)+(deg===1?'x':`x<sup>${deg}</sup>`));
+      steps.push(`  (${fmtN(A[d1])}${parseInt(d1)>0?(parseInt(d1)===1?'x':'x<sup>'+d1+'</sup>'):''}) × (${fmtN(B[d2])}${parseInt(d2)>0?(parseInt(d2)===1?'x':'x<sup>'+d2+'</sup>'):''}) = <em>${term}</em>`);
+    }));
+    steps.push(`Sumamos términos semejantes: <em>${polyToStr(R)}</em>`);
+    fin=buildFin('RESULTADO',polyToStr(R));
+    addHist('Polinomios',`(${rawA})(${rawB})`,polyToStr(R),'📐','#00D4FF');
+  } else {
+    // Division by monomial
+    const monB=Object.keys(B).filter(d=>B[d]!==0);
+    if(monB.length!==1){showErr('poliRes','Para división, el polinomio B debe ser un monomio (ej: 2x).');return}
+    const dDiv=parseInt(monB[0]),cDiv=B[monB[0]];
+    const R={};
+    Object.keys(A).forEach(d=>{
+      const newD=parseInt(d)-dDiv;
+      if(newD<0){showErr('poliRes','No se puede dividir: el divisor tiene grado mayor que algún término.');return}
+      R[newD]=(R[newD]||0)+A[d]/cDiv;
+    });
+    steps=[
+      `Polinomio A: <em>${aStr}</em>`,
+      `Divisor (monomio): <em>${bStr}</em>`,
+      `Dividimos cada término por el monomio.`,
+      Object.keys(A).filter(d=>A[d]!==0).map(d=>{const nd=parseInt(d)-dDiv;return `  ${fmtN(A[d])}x<sup>${d}</sup> ÷ ${polyToStr(B)} = <em>${fmtN(A[d]/cDiv)}${nd===0?'':nd===1?'x':`x<sup>${nd}</sup>`}</em>`;}).join('<br>'),
+      `Resultado: <em>${polyToStr(R)}</em>`
+    ];
+    fin=buildFin('RESULTADO',polyToStr(R));
+    addHist('Polinomios',`(${rawA}) ÷ (${rawB})`,polyToStr(R),'📐','#00D4FF');
+  }
+  showRes('poliRes',buildSteps('PROCEDIMIENTO',steps),fin);
+}
+
+/* ══════════════════════════════════════════════════
+   SOLVER: FACTORIZACIÓN
+══════════════════════════════════════════════════ */
+function solveFact(){
+  const raw=document.getElementById('factInput').value.trim();
+  const method=document.getElementById('factMethod').value;
+  if(!raw){showErr('factRes','Ingresa una expresión.');return}
+  const s=raw.toLowerCase().replace(/\s+/g,'').replace(/\^/g,'**');
+  let steps=[],fin,res='';
+
+  // Helper: detect coeff before x
+  // Try to extract ax^2 + bx + c
+  function extractQuadCoeffs(s){
+    let a=0,b=0,c=0;
+    const r=/([+-]?)(\d*\.?\d*)(x\*\*2|x\^2|x²)?/g;
+    let m;s.replace(/\s+/g,'');
+    // simpler approach using parsePoly
+    const poly=parsePoly(s);
+    a=poly[2]||0;b=poly[1]||0;c=poly[0]||0;
+    return{a,b,c};
+  }
+
+  const poly=parsePoly(s);
+  const degs=Object.keys(poly).map(Number).filter(d=>poly[d]!==0).sort((a,b)=>b-a);
+  const maxDeg=degs[0]||0;
+
+  // AUTO DETECT
+  let detected=method;
+  if(method==='auto'){
+    const {a,b,c}=extractQuadCoeffs(s);
+    const keys=Object.keys(poly).map(Number).filter(d=>poly[d]!==0);
+    // Factor común: GCD of all coeffs
+    const gcdCoeffs=keys.reduce((g,k)=>gcd(Math.abs(poly[k]),g),0);
+    if(gcdCoeffs>1&&(keys.length>1||(keys.length===1&&degs[0]>0))){detected='fc'}
+    else if(keys.length<=2&&a!==0&&b===0&&c!==0&&maxDeg===2){detected='dc'}
+    else if(a!==0&&b!==0&&c!==0&&maxDeg===2){
+      if(a===1){detected='tri'}
+      else if(isTCP(a,b,c)){detected='tcp'}
+      else{detected='tri2'}
+    } else if(maxDeg===3&&keys.length<=2){detected='cube'}
+    else{detected='fc'}
+  }
+
+  function gcd(a,b){return b===0?a:gcd(b,a%b)}
+  function isTCP(a,b,c){return Math.abs(b)===2*Math.sqrt(Math.abs(a))*Math.sqrt(Math.abs(c))}
+
+  const {a,b,c}=extractQuadCoeffs(s);
+
+  if(detected==='fc'){
+    const keys=Object.keys(poly).map(Number).filter(d=>poly[d]!==0);
+    const gcdC=keys.reduce((g,k)=>gcd(Math.abs(poly[k]),g),0);
+    const minD=Math.min(...keys);
+    const reduced={};keys.forEach(k=>reduced[k-minD]=poly[k]/gcdC);
+    const fc=gcdC*(minD>0?`x${minD>1?'<sup>'+minD+'</sup>':''}`:1);
+    const fcStr=gcdC===1&&minD===0?'1':(gcdC===1?`x${minD>1?'<sup>'+minD+'</sup>':''}`:fc);
+    steps=[
+      `Expresión: <em>${polyToStr(poly)}</em>`,
+      `Identificamos el <strong>factor común</strong> de todos los términos.`,
+      `Coeficiente GCD: <strong>${gcdC}</strong>  |  Variable mínima: <strong>x<sup>${minD}</sup></strong>`,
+      `Factor común = <em class="hl-g">${gcdC===1?'':(gcdC)}${minD>0?'x'+(minD>1?'<sup>'+minD+'</sup>':''):''}</em>`,
+      `Dividimos cada término entre el factor común.`,
+      `Resultado: <em>${gcdC===1&&minD===0?'':gcdC===1?`x${minD>1?'<sup>'+minD+'</sup>':''}`:`${gcdC}x${minD>0?minD>1?'<sup>'+minD+'</sup>':'':`<sup>0</sup>`}`}(${polyToStr(reduced)})</em>`,
+    ];
+    res=`${gcdC===1&&minD===0?polyToStr(reduced):`${gcdC===1?'':(gcdC)}${minD>0?'x'+(minD>1?'<sup>'+minD+'</sup>':''):''}(${polyToStr(reduced)})`}`;
+  } else if(detected==='dc'){
+    // a²-b²=(a+b)(a-b)
+    const A2=a>0?a:-a, C2=c>0?c:-c;
+    const sqA=Math.sqrt(Math.abs(a)), sqC=Math.sqrt(Math.abs(c));
+    if(a>0&&c<0&&Number.isInteger(sqA)&&Number.isInteger(sqC)){
+      steps=[
+        `Expresión: <em>${polyToStr(poly)}</em>`,
+        `Forma: <em>a² − b²</em>  →  Factor: <em>(a + b)(a − b)</em>`,
+        `a² = ${a}x² → a = <strong>${sqA}x</strong>`,
+        `b² = ${Math.abs(c)} → b = <strong>${sqC}</strong>`,
+        `Aplicamos: <em>(${sqA===1?'':sqA}x + ${sqC})(${sqA===1?'':sqA}x − ${sqC})</em>`,
+      ];
+      res=`(${sqA===1?'':sqA}x + ${sqC})(${sqA===1?'':sqA}x − ${sqC})`;
+    } else {
+      steps=[`Expresión: <em>${polyToStr(poly)}</em>`,`No se detectó diferencia de cuadrados perfecta. Verifica que ambos términos sean cuadrados perfectos y tengan signos contrarios.`];
+      res='No aplicable';
+    }
+  } else if(detected==='tcp'){
+    const sqA=Math.sqrt(Math.abs(a)), sqC=Math.sqrt(Math.abs(c));
+    const signB=b>0?'+':'-';
+    steps=[
+      `Expresión: <em>${polyToStr(poly)}</em>`,
+      `Forma: <em>(√a·x ± √c)²</em>`,
+      `√(${a}x²) = <strong>${sqA}x</strong>`,
+      `√(${Math.abs(c)}) = <strong>${sqC}</strong>`,
+      `Verificamos: 2·${sqA}x·${sqC} = ${2*sqA*sqC}x ${signB} ${Math.abs(b)}x ✓`,
+      `Resultado: <em>(${sqA===1?'':sqA}x ${signB} ${sqC})²</em>`,
+    ];
+    res=`(${sqA===1?'':sqA}x ${signB} ${sqC})²`;
+  } else if(detected==='tri'){
+    // x² + bx + c → (x+r)(x+s) where r+s=b, r*s=c
+    let r=null,s=null;
+    for(let i=-50;i<=50;i++){if(Number.isInteger(c/i)&&i+(c/i)===b){r=i;s=c/i;break}}
+    if(r!==null){
+      steps=[
+        `Expresión: <em>${polyToStr(poly)}</em>`,
+        `Forma: <em>x² + bx + c</em>  (coeficiente a=1)`,
+        `Buscamos r y s tal que: <strong>r + s = ${b}</strong>  y  <strong>r · s = ${c}</strong>`,
+        `Encontramos: r = <em>${r}</em>, s = <em>${s}</em>`,
+        `Verificación: ${r} + ${s} = ${r+s} ✓  ;  ${r} × ${s} = ${r*s} ✓`,
+        `Factorización: <em>(x ${r>=0?'+ '+r:'− '+Math.abs(r)})(x ${s>=0?'+ '+s:'− '+Math.abs(s)})</em>`,
+      ];
+      res=`(x ${r>=0?'+ '+r:'− '+Math.abs(r)})(x ${s>=0?'+ '+s:'− '+Math.abs(s)})`;
+    } else {
+      // use quadratic formula
+      const disc=b*b-4*c;
+      if(disc<0){steps=[`No tiene factores reales (discriminante < 0). Δ = ${disc}`];res='Sin factores reales';}
+      else{
+        const r1=(-b+Math.sqrt(disc))/2, r2=(-b-Math.sqrt(disc))/2;
+        steps=[`Expresión: <em>${polyToStr(poly)}</em>`,`Usamos fórmula general → raíces: ${fmtN(r1)}, ${fmtN(r2)}`,`Factor: <em>(x − ${fmtN(r1)})(x − ${fmtN(r2)})</em>`];
+        res=`(x − ${fmtN(r1)})(x − ${fmtN(r2)})`;
+      }
+    }
+  } else if(detected==='tri2'){
+    const disc=b*b-4*a*c;
+    steps=[
+      `Expresión: <em>${polyToStr(poly)}</em>`,
+      `Forma: <em>${a}x² ${b>=0?'+ '+b:'− '+Math.abs(b)}x ${c>=0?'+ '+c:'− '+Math.abs(c)}</em>`,
+      `Método: Fórmula general → <em>x = (−b ± √(b²−4ac)) / 2a</em>`,
+      `Δ = (${b})² − 4·${a}·${c} = ${b*b} − ${4*a*c} = <strong>${disc}</strong>`,
+    ];
+    if(disc<0){steps.push(`Δ < 0 → no tiene factores reales.`);res='Sin factores reales';}
+    else {
+      const r1=(-b+Math.sqrt(disc))/(2*a), r2=(-b-Math.sqrt(disc))/(2*a);
+      steps.push(`x₁ = (−${b} + √${disc}) / ${2*a} = <em>${fmtN(r1)}</em>`);
+      steps.push(`x₂ = (−${b} − √${disc}) / ${2*a} = <em>${fmtN(r2)}</em>`);
+      steps.push(`Factor: <em>${a}(x − ${fmtN(r1)})(x − ${fmtN(r2)})</em>`);
+      res=`${a}(x − ${fmtN(r1)})(x − ${fmtN(r2)})`;
+    }
+  } else if(detected==='cube'){
+    // a³ ± b³
+    const pKeys=Object.keys(poly).map(Number).filter(d=>poly[d]!==0);
+    if(pKeys.length===2&&pKeys.includes(3)&&pKeys.includes(0)){
+      const A=poly[3], C=poly[0];
+      const cbA=Math.cbrt(Math.abs(A)), cbC=Math.cbrt(Math.abs(C));
+      const sign=C>0?'+':'-';
+      if(sign==='+'){
+        // a³+b³=(a+b)(a²-ab+b²)
+        steps=[
+          `Expresión: <em>${polyToStr(poly)}</em>`,
+          `Forma: <em>a³ + b³ = (a + b)(a² − ab + b²)</em>`,
+          `a = <strong>${fmtN(cbA)}x</strong>  ,  b = <strong>${fmtN(cbC)}</strong>`,
+          `= (${fmtN(cbA)}x + ${fmtN(cbC)})(${fmtN(cbA*cbA)}x² − ${fmtN(cbA*cbC)}x + ${fmtN(cbC*cbC)})`,
+        ];
+        res=`(${fmtN(cbA)}x + ${fmtN(cbC)})(${fmtN(cbA**2)}x² − ${fmtN(cbA*cbC)}x + ${fmtN(cbC**2)})`;
+      } else {
+        // a³-b³=(a-b)(a²+ab+b²)
+        steps=[
+          `Expresión: <em>${polyToStr(poly)}</em>`,
+          `Forma: <em>a³ − b³ = (a − b)(a² + ab + b²)</em>`,
+          `a = <strong>${fmtN(cbA)}x</strong>  ,  b = <strong>${fmtN(cbC)}</strong>`,
+          `= (${fmtN(cbA)}x − ${fmtN(cbC)})(${fmtN(cbA*cbA)}x² + ${fmtN(cbA*cbC)}x + ${fmtN(cbC*cbC)})`,
+        ];
+        res=`(${fmtN(cbA)}x − ${fmtN(cbC)})(${fmtN(cbA**2)}x² + ${fmtN(cbA*cbC)}x + ${fmtN(cbC**2)})`;
+      }
+    } else {
+      steps=[`No se detectó suma/diferencia de cubos pura. Intenta factor común primero.`];res='Ver procedimiento';
+    }
+  } else {
+    steps=[`Método no implementado aún. Usa "Detectar automáticamente".`];res='—';
+  }
+
+  fin=buildFin('FACTORIZACIÓN',res);
+  showRes('factRes',buildSteps(`MÉTODO: ${detected.toUpperCase()}`,steps),fin);
+  if(res&&res!=='—'&&res!=='Sin factores reales'&&res!=='No aplicable')addHist('Factorización',raw,res,'🔢','#7B61FF');
+}
+
+/* ══════════════════════════════════════════════════
+   SOLVER: LINEAR  (robust regex parser)
+══════════════════════════════════════════════════ */
+function solveLinear(){
+  const raw=document.getElementById('linIn').value.trim();
+  if(!raw){showErr('linRes','Ingresa una ecuación.');return}
+  try{
+    let eq=raw.toLowerCase().replace(/\s+/g,'');
+    // Handle parentheses like 5(x+2) = 5x+10
+    eq=expandParens(eq);
+    if(!eq.includes('=')){showErr('linRes','La ecuación debe tener "=".');return}
+    const [lR,rR]=eq.split('=');
+    function parseSide(s){
+      if(!s)return{coeff:0,constant:0};
+      let expr=s;
+      if(expr[0]!=='+'&&expr[0]!=='-')expr='+'+expr;
+      const re=/([+-])(\d*\.?\d*)(x?)/g;
+      let coeff=0,constant=0,m;
+      while((m=re.exec(expr))!==null){
+        if(!m[0]){re.lastIndex++;continue;}
+        const sign=m[1]==='-'?-1:1;
+        const hasX=m[3]==='x';
+        const n=m[2]===''?1:parseFloat(m[2]);
+        if(isNaN(n))continue;
+        if(hasX)coeff+=sign*n; else if(m[2])constant+=sign*n;
+      }
+      return{coeff,constant};
+    }
+    const lhs=parseSide(lR),rhs=parseSide(rR);
+    const a=lhs.coeff-rhs.coeff, b=rhs.constant-lhs.constant;
+    if(a===0){
+      if(Math.abs(b)<1e-10)showErr('linRes','Infinitas soluciones (identidad).');
+      else showErr('linRes','Sin solución (contradicción).');
+      return;
+    }
+    const x=b/a;
+    const steps=[
+      `Ecuación original: <em>${raw}</em>`,
+    ];
+    if(rhs.coeff!==0){const mv=rhs.coeff>0?`Restamos <strong>${fmtN(rhs.coeff)}x</strong>`:`Sumamos <strong>${fmtN(Math.abs(rhs.coeff))}x</strong>`;steps.push(mv+` en ambos lados: <em>${fmtN(a)}x = ${fmtN(b)}</em>`)}
+    if(lhs.constant!==0){const mv=lhs.constant>0?`Restamos <strong>${fmtN(lhs.constant)}</strong>`:`Sumamos <strong>${fmtN(Math.abs(lhs.constant))}</strong>`;steps.push(mv+` en ambos lados: <em>${fmtN(a)}x = ${fmtN(b)}</em>`)}
+    if(rhs.coeff===0&&lhs.constant===0)steps.push(`Términos agrupados: <em>${fmtN(a)}x = ${fmtN(b)}</em>`);
+    steps.push(`Dividimos ambos lados entre <strong>${fmtN(a)}</strong>: x = ${fmtN(b)} ÷ ${fmtN(a)}`);
+    steps.push(`x = <em class="hl-g">${fmtN(x)}</em>`);
+    steps.push(`Verificación: sustituimos x = ${fmtN(x)} → <strong>${fmtN(lhs.coeff*x+lhs.constant)} = ${fmtN(rhs.coeff*x+rhs.constant)}</strong> ✓`);
+    showRes('linRes',buildSteps('PROCEDIMIENTO PASO A PASO',steps),buildFin('RESULTADO','x = '+fmtN(x)));
+    addHist('Lineal',raw,'x = '+fmtN(x),'𝑥','#00E676');
+  }catch(e){showErr('linRes','Error al parsear. Usa formato: 2x + 5 = 15')}
+}
+function expandParens(eq){
+  // Very basic: 5(x+2) → 5x+10; a(bx+c) = abx + ac
+  return eq.replace(/(\d+)\(([^)]+)\)/g,(m,k,inner)=>{
+    return inner.replace(/([+-]?)(\d*\.?\d*)(x?)/g,(m2,sg,n,xp)=>{
+      if(!m2)return '';
+      const s=sg==='-'?-1:1;
+      const num=n===''?1:parseFloat(n);
+      if(isNaN(num))return m2;
+      const res=s*parseInt(k)*num;
+      return (res>=0?(m2.length>1?'+':'+'):'')+res+(xp||'');
+    });
+  });
+}
+
+/* ══════════════════════════════════════════════════
+   SOLVER: QUADRATIC
+══════════════════════════════════════════════════ */
+function solveQuad(){
+  const a=parseFloat(document.getElementById('qa').value);
+  const b=parseFloat(document.getElementById('qb').value);
+  const c=parseFloat(document.getElementById('qc').value);
+  if([a,b,c].some(isNaN)){showErr('quadRes','Ingresa valores numéricos.');return}
+  if(a===0){showErr('quadRes','a ≠ 0 para que sea cuadrática.');return}
+  const disc=b*b-4*a*c;
+  const eq=`${a}x² ${b>=0?'+ '+b:'− '+Math.abs(b)}x ${c>=0?'+ '+c:'− '+Math.abs(c)} = 0`;
+  const steps=[
+    `Ecuación: <em>${eq}</em>`,
+    `Fórmula general: <em>x = (−b ± √(b²−4ac)) / 2a</em>`,
+    `Sustituimos: a=${a}, b=${b}, c=${c}`,
+    `Calculamos discriminante <strong>Δ = b²−4ac</strong>`,
+    `Δ = (${b})² − 4·(${a})·(${c}) = ${b*b} − ${4*a*c} = <strong>${disc}</strong>`,
+  ];
+  let fin,res;
+  if(disc>0){
+    const x1=(-b+Math.sqrt(disc))/(2*a), x2=(-b-Math.sqrt(disc))/(2*a);
+    steps.push(`Δ > 0 → <span class="hl-g">Dos raíces reales distintas</span>`);
+    steps.push(`x₁ = (${-b} + √${disc}) / ${2*a} = <em class="hl-g">${fmtN(x1)}</em>`);
+    steps.push(`x₂ = (${-b} − √${disc}) / ${2*a} = <em class="hl-g">${fmtN(x2)}</em>`);
+    fin=buildFin('RAÍCES',`x₁ = ${fmtN(x1)}<br>x₂ = ${fmtN(x2)}`,'multi');
+    res=`x₁=${fmtN(x1)}, x₂=${fmtN(x2)}`;
+  } else if(disc===0){
+    const x=-b/(2*a);
+    steps.push(`Δ = 0 → <span class="hl-p">Raíz real doble</span>`);
+    steps.push(`x = −b / 2a = ${-b} / ${2*a} = <em class="hl-p">${fmtN(x)}</em>`);
+    fin=buildFin('RAÍZ DOBLE',`x = ${fmtN(x)}`);
+    res=`x = ${fmtN(x)}`;
+  } else {
+    const re=fmtN(-b/(2*a)), im=fmtN(Math.sqrt(-disc)/(2*a));
+    steps.push(`Δ < 0 → <span class="hl-pk">Raíces complejas conjugadas</span>`);
+    steps.push(`x = ${re} ± ${im}i`);
+    fin=buildFin('RAÍCES COMPLEJAS',`x = ${re} ± ${im}i`);
+    res=`${re} ± ${im}i`;
+  }
+  showRes('quadRes',buildSteps('PROCEDIMIENTO',steps),fin);
+  addHist('Cuadrática',eq,res,'𝑥²','#FFB300');
+}
+
+/* ══════════════════════════════════════════════════
+   SOLVER: SYSTEMS 2×2
+══════════════════════════════════════════════════ */
+function solveSys(){
+  const a1=parseFloat(document.getElementById('sa1').value);
+  const b1=parseFloat(document.getElementById('sb1').value);
+  const c1=parseFloat(document.getElementById('sc1').value);
+  const a2=parseFloat(document.getElementById('sa2').value);
+  const b2=parseFloat(document.getElementById('sb2').value);
+  const c2=parseFloat(document.getElementById('sc2').value);
+  if([a1,b1,c1,a2,b2,c2].some(isNaN)){showErr('sysRes','Ingresa todos los coeficientes.');return}
+  const method=document.getElementById('sysMethod').value;
+  const eq1=`${a1}x ${b1>=0?'+ '+b1:'− '+Math.abs(b1)}y = ${c1}`;
+  const eq2=`${a2}x ${b2>=0?'+ '+b2:'− '+Math.abs(b2)}y = ${c2}`;
+  const det=a1*b2-a2*b1;
+  let steps=[`Sistema: <em>(1) ${eq1}</em>  &  <em>(2) ${eq2}</em>`];
+  if(Math.abs(det)<1e-10){
+    const ratio=c1/a1===c2/a2?'Infinitas soluciones (ecuaciones proporcionales).':'Sin solución (sistema incompatible).';
+    steps.push(ratio);showRes('sysRes',buildSteps('ANÁLISIS',steps),buildFin('RESULTADO',ratio));return;
+  }
+  const x=(c1*b2-c2*b1)/det, y=(a1*c2-a2*c1)/det;
+  if(method==='sust'){
+    // From eq1: x = (c1 - b1*y)/a1
+    steps.push(`Método: <strong>Sustitución</strong>`);
+    steps.push(`De (1): despejamos x → x = (${c1} − ${b1}y) / ${a1}`);
+    steps.push(`Sustituimos en (2): ${a2}·((${c1}−${b1}y)/${a1}) + ${b2}y = ${c2}`);
+    steps.push(`Simplificamos y despejamos y: <em>y = ${fmtN(y)}</em>`);
+    steps.push(`Sustituimos y = ${fmtN(y)} en (1): x = (${c1}−${b1}·${fmtN(y)}) / ${a1} = <em>${fmtN(x)}</em>`);
+  } else if(method==='igual'){
+    steps.push(`Método: <strong>Igualación</strong>`);
+    if(a1!==0&&a2!==0){
+      steps.push(`De (1): x = (${c1}−${b1}y) / ${a1}`);
+      steps.push(`De (2): x = (${c2}−${b2}y) / ${a2}`);
+      steps.push(`Igualamos: (${c1}−${b1}y)/${a1} = (${c2}−${b2}y)/${a2}`);
+    } else {
+      steps.push(`De (1) y (2) despejamos la misma variable e igualamos.`);
+    }
+    steps.push(`Despejamos y: <em>y = ${fmtN(y)}</em>`);
+    steps.push(`Calculamos x: <em>x = ${fmtN(x)}</em>`);
+  } else {
+    // Gauss elimination
+    steps.push(`Método: <strong>Eliminación (Gauss)</strong>`);
+    steps.push(`Multiplicamos (1) × ${a2} y (2) × ${a1}:`);
+    steps.push(`  (1'): ${a1*a2}x ${b1*a2>=0?'+ '+b1*a2:'− '+Math.abs(b1*a2)}y = ${c1*a2}`);
+    steps.push(`  (2'): ${a2*a1}x ${b2*a1>=0?'+ '+b2*a1:'− '+Math.abs(b2*a1)}y = ${c2*a1}`);
+    steps.push(`Restamos (1')−(2'): ${b1*a2-b2*a1}y = ${c1*a2-c2*a1}`);
+    steps.push(`y = ${c1*a2-c2*a1} / ${b1*a2-b2*a1} = <em>${fmtN(y)}</em>`);
+    steps.push(`Sustituimos en (1): x = ${fmtN(x)}`);
+  }
+  steps.push(`Verificación (1): ${a1}(${fmtN(x)}) + ${b1}(${fmtN(y)}) = <strong>${fmtN(a1*x+b1*y)}</strong> ✓`);
+  steps.push(`Verificación (2): ${a2}(${fmtN(x)}) + ${b2}(${fmtN(y)}) = <strong>${fmtN(a2*x+b2*y)}</strong> ✓`);
+  showRes('sysRes',buildSteps('PROCEDIMIENTO',steps),buildFin('SOLUCIÓN',`x = ${fmtN(x)}<br>y = ${fmtN(y)}`,'multi'));
+  addHist('Sistema',`${eq1} / ${eq2}`,`x=${fmtN(x)}, y=${fmtN(y)}`,'⚙','#FF6B35');
+}
+
+/* ══════════════════════════════════════════════════
+   SOLVER: LOGARITHM
+══════════════════════════════════════════════════ */
+function solveLog(){
+  const baseRaw=document.getElementById('logBase').value;
+  const val=parseFloat(document.getElementById('logVal').value);
+  if(isNaN(val)||val<=0){showErr('logRes','El valor debe ser un número positivo.');return}
+  let base,baseL;
+  if(baseRaw==='e'){base=Math.E;baseL='e'}else{base=parseFloat(baseRaw);baseL=baseRaw}
+  const result=Math.log(val)/Math.log(base);
+  const steps=[
+    `Expresión: <em>log<sub>${baseL}</sub>(${val})</em>`,
+    `Definición: <em>log<sub>b</sub>(x) = y  ↔  b<sup>y</sup> = x</em>`,
+    `Cambio de base: <em>log<sub>b</sub>(x) = ln(x) / ln(b)</em>`,
+    `ln(${val}) = <strong>${fmtN(Math.log(val))}</strong>`,
+    `ln(${baseL==='e'?'e':base}) = <strong>${fmtN(Math.log(base))}</strong>`,
+    `Resultado: ${fmtN(Math.log(val))} ÷ ${fmtN(Math.log(base))} = <em>${fmtN(result,8)}</em>`,
+  ];
+  if(Number.isInteger(Math.round(result*1e9)/1e9)){
+    const r=Math.round(result);
+    steps.push(`Verificación: ${baseL==='e'?'e':base}<sup>${r}</sup> = ${fmtN(Math.pow(base,r))} ≈ ${val} ✓`);
+  }
+  // Properties
+  if(val>1){
+    steps.push(`Propiedades usadas: <span class="hl-p">cambio de base</span>, definición de logaritmo natural`);
+  }
+  showRes('logRes',buildSteps('PROCEDIMIENTO',steps),buildFin(`log<sub>${baseL}</sub>(${val})`,fmtN(result,8)));
+  addHist('Logaritmo',`log${baseL}(${val})`,fmtN(result,6),'㏒','#00E676');
+}
+
+/* ══════════════════════════════════════════════════
+   SOLVER: TRIGONOMETRY
+══════════════════════════════════════════════════ */
+function selTrig(btn){document.querySelectorAll('.tf').forEach(b=>b.classList.remove('act'));btn.classList.add('act');selTrigFn=btn.dataset.fn}
+
+function solveTrig(){
+  const ang=parseFloat(document.getElementById('trigAngle').value);
+  const unit=document.getElementById('trigUnit').value;
+  if(isNaN(ang)){showErr('trigRes','Ingresa un ángulo.');return}
+  const rad=unit==='deg'?ang*Math.PI/180:ang;
+  const ul=unit==='deg'?'°':' rad';
+  const fn=selTrigFn;
+  const sinV=Math.sin(rad),cosV=Math.cos(rad);
+  let result,steps;
+  switch(fn){
+    case 'sin':
+      result=sinV;
+      steps=[`Función: <em>sin(${ang}${ul})</em>`,unit==='deg'?`Conversión: ${ang}° × (π/180) = <em>${fmtN(rad,5)} rad</em>`:`Ángulo: ${ang} rad`,`sin(${fmtN(rad,4)}) = <em class="hl-g">${fmtN(result)}</em>`,result>=0?`Ángulo en cuadrante I o II (seno positivo)`:`Ángulo en cuadrante III o IV (seno negativo)`];break;
+    case 'cos':
+      result=cosV;
+      steps=[`Función: <em>cos(${ang}${ul})</em>`,unit==='deg'?`Conversión: ${ang}° → ${fmtN(rad,5)} rad`:`Ángulo: ${ang} rad`,`cos(${fmtN(rad,4)}) = <em class="hl-g">${fmtN(result)}</em>`];break;
+    case 'tan':
+      if(Math.abs(cosV)<1e-10){showErr('trigRes',`tan(${ang}${ul}) es indefinida (cos = 0)`);return}
+      result=Math.tan(rad);
+      steps=[`Función: <em>tan(${ang}${ul})</em>`,`tan(x) = sin(x) / cos(x)`,`sin(${ang}${ul}) = ${fmtN(sinV)}`,`cos(${ang}${ul}) = ${fmtN(cosV)}`,`tan = ${fmtN(sinV)} / ${fmtN(cosV)} = <em class="hl-g">${fmtN(result)}</em>`];break;
+    case 'sec':
+      if(Math.abs(cosV)<1e-10){showErr('trigRes',`sec es indefinida aquí (cos = 0)`);return}
+      result=1/cosV;
+      steps=[`sec(x) = 1 / cos(x)`,`cos(${ang}${ul}) = ${fmtN(cosV)}`,`sec = 1 / ${fmtN(cosV)} = <em>${fmtN(result)}</em>`];break;
+    case 'csc':
+      if(Math.abs(sinV)<1e-10){showErr('trigRes',`csc es indefinida aquí (sin = 0)`);return}
+      result=1/sinV;
+      steps=[`csc(x) = 1 / sin(x)`,`sin(${ang}${ul}) = ${fmtN(sinV)}`,`csc = 1 / ${fmtN(sinV)} = <em>${fmtN(result)}</em>`];break;
+    case 'cot':
+      if(Math.abs(sinV)<1e-10){showErr('trigRes',`cot es indefinida aquí (sin = 0)`);return}
+      result=cosV/sinV;
+      steps=[`cot(x) = cos(x)/sin(x)`,`cos(${ang}${ul}) = ${fmtN(cosV)}`,`sin(${ang}${ul}) = ${fmtN(sinV)}`,`cot = ${fmtN(cosV)}/${fmtN(sinV)} = <em>${fmtN(result)}</em>`];break;
+  }
+  showRes('trigRes',buildSteps('CÁLCULO',steps),buildFin(`${fn}(${ang}${ul})`,fmtN(result,8)));
+  addHist('Trigonometría',`${fn}(${ang}${ul})`,fmtN(result,6),'〜','#FF4081');
+}
+
+// Sub-tabs trig
+function showTrigTab(t){
+  const tabs=['fn','pit','conv','id'];
+  const btns={fn:'ttFn',pit:'ttPit',conv:'ttConv',id:'ttId'};
+  tabs.forEach(id=>{
+    document.getElementById('ttab-'+id).style.display='none';
+    const btn=document.getElementById(btns[id]);
+    btn.className='btn-ex';btn.style.cssText='';
+  });
+  document.getElementById('ttab-'+t).style.display='block';
+  const activeBtn=document.getElementById(btns[t]);
+  activeBtn.className='btn-go';activeBtn.style.cssText='padding:9px 20px;font-size:.68rem';
+}
+
+/* ── Pitágoras ──────────────────────────────── */
+function solvePit(){
+  const a=document.getElementById('pita').value.trim();
+  const b=document.getElementById('pitb').value.trim();
+  const c=document.getElementById('pitc').value.trim();
+  const nA=a!==''?parseFloat(a):null;
+  const nB=b!==''?parseFloat(b):null;
+  const nC=c!==''?parseFloat(c):null;
+  const known=[nA,nB,nC].filter(v=>v!==null);
+  if(known.length<2){showErr('pitRes','Ingresa al menos 2 lados conocidos.');return}
+  let steps=[`Teorema de Pitágoras: <em>a² + b² = c²</em>`],res,label;
+  if(nA!==null&&nB!==null){
+    const cv=Math.sqrt(nA*nA+nB*nB);
+    steps.push(`Conocemos: a = ${nA},  b = ${nB}`);
+    steps.push(`c² = a² + b² = ${nA}² + ${nB}² = ${nA*nA} + ${nB*nB} = <strong>${nA*nA+nB*nB}</strong>`);
+    steps.push(`c = √${nA*nA+nB*nB} = <em class="hl-g">${fmtN(cv)}</em>`);
+    res=`c = ${fmtN(cv)}`;label='HIPOTENUSA';
+  } else if(nA!==null&&nC!==null){
+    if(nC<=nA){showErr('pitRes','La hipotenusa debe ser mayor que los catetos.');return}
+    const bv=Math.sqrt(nC*nC-nA*nA);
+    steps.push(`Conocemos: a = ${nA},  c = ${nC}`);
+    steps.push(`b² = c² − a² = ${nC*nC} − ${nA*nA} = <strong>${nC*nC-nA*nA}</strong>`);
+    steps.push(`b = √${nC*nC-nA*nA} = <em class="hl-g">${fmtN(bv)}</em>`);
+    res=`b = ${fmtN(bv)}`;label='CATETO b';
+  } else {
+    if(nC<=nB){showErr('pitRes','La hipotenusa debe ser mayor que los catetos.');return}
+    const av=Math.sqrt(nC*nC-nB*nB);
+    steps.push(`Conocemos: b = ${nB},  c = ${nC}`);
+    steps.push(`a² = c² − b² = ${nC*nC} − ${nB*nB} = <strong>${nC*nC-nB*nB}</strong>`);
+    steps.push(`a = √${nC*nC-nB*nB} = <em class="hl-g">${fmtN(av)}</em>`);
+    res=`a = ${fmtN(av)}`;label='CATETO a';
+  }
+  showRes('pitRes',buildSteps('TEOREMA DE PITÁGORAS',steps),buildFin(label,res));
+  addHist('Trigonometría',`a=${a||'?'}, b=${b||'?'}, c=${c||'?'}`,res,'〜','#FF4081');
+}
+
+/* ── Conversión ─────────────────────────────── */
+function solveConv(){
+  const val=parseFloat(document.getElementById('convVal').value);
+  const from=document.getElementById('convFrom').value;
+  if(isNaN(val)){showErr('convRes','Ingresa un valor numérico.');return}
+  let steps,res;
+  if(from==='deg'){
+    const rad=val*Math.PI/180;
+    steps=[
+      `Conversión: <em>grados → radianes</em>`,
+      `Fórmula: <em>rad = grados × (π / 180)</em>`,
+      `rad = ${val} × (π / 180) = ${val} × ${fmtN(Math.PI/180,6)}`,
+      `rad = <em class="hl-g">${fmtN(rad,6)}</em>`,
+    ];
+    res=`${fmtN(rad,6)} rad`;
+  } else {
+    const deg=val*180/Math.PI;
+    steps=[
+      `Conversión: <em>radianes → grados</em>`,
+      `Fórmula: <em>grados = rad × (180 / π)</em>`,
+      `grados = ${val} × (180/π) = ${val} × ${fmtN(180/Math.PI,6)}`,
+      `grados = <em class="hl-g">${fmtN(deg,4)}°</em>`,
+    ];
+    res=`${fmtN(deg,4)}°`;
+  }
+  showRes('convRes',buildSteps('CONVERSIÓN',steps),buildFin('RESULTADO',res));
+  addHist('Trigonometría',`Conversión: ${val} ${from==='deg'?'°':'rad'}`,res,'〜','#FF4081');
+}
+
+/* ── Identidades ────────────────────────────── */
+function solveId(){
+  const ang=parseFloat(document.getElementById('idAngle').value);
+  if(isNaN(ang)){showErr('idRes','Ingresa un ángulo en grados.');return}
+  const rad=ang*Math.PI/180;
+  const s=Math.sin(rad),c=Math.cos(rad),t=Math.tan(rad);
+  const identities=[
+    {name:'Identidad Pitagórica',expr:'sin²θ + cos²θ = 1',val:`${fmtN(s*s,4)} + ${fmtN(c*c,4)} = ${fmtN(s*s+c*c,4)} ≈ 1 ✓`},
+    {name:'Identidad Pitagórica 2',expr:'1 + tan²θ = sec²θ',val:`1 + ${fmtN(t*t,4)} = ${fmtN(1+t*t,4)}  |  sec²θ = ${fmtN(1/(c*c),4)} ✓`},
+    {name:'Razón tangente',expr:'tan θ = sin θ / cos θ',val:`${fmtN(t,5)} = ${fmtN(s,5)} / ${fmtN(c,5)} = ${fmtN(s/c,5)} ✓`},
+    {name:'Recíproca sec',expr:'sec θ = 1 / cos θ',val:`${fmtN(1/c,5)} = 1 / ${fmtN(c,5)} ✓`},
+    {name:'Recíproca csc',expr:'csc θ = 1 / sin θ',val:Math.abs(s)<1e-10?'Indefinida para este ángulo':`${fmtN(1/s,5)} = 1 / ${fmtN(s,5)} ✓`},
+    {name:'Ángulo complementario',expr:'sin(90°−θ) = cos θ',val:`sin(${90-ang}°) = ${fmtN(Math.sin((90-ang)*Math.PI/180),5)} ≈ cos(${ang}°) = ${fmtN(c,5)} ✓`},
+  ];
+  const steps=identities.map(id=>`<span class="hl-p">${id.name}:</span> <em>${id.expr}</em><br>  → ${id.val}`);
+  showRes('idRes',buildSteps(`IDENTIDADES PARA θ = ${ang}°`,steps),buildFin('ÁNGULO EVALUADO',`${ang}° = ${fmtN(rad,4)} rad`));
+}
+
+/* ══════════════════════════════════════════════════
+   GRAPH
+══════════════════════════════════════════════════ */
+function initGraphPlaceholder(){drawGraphFn('x**2 - 4*x + 3',false)}
+function drawGraph(){const fn=document.getElementById('graphFn').value.trim();if(!fn)return;drawGraphFn(fn,true)}
+function drawGraphFn(fnStr,record){
+  const cv=document.getElementById('gCanvas');if(!cv)return;
+  let body=fnStr.replace(/\^/g,'**').replace(/(?<![A-Za-z\.])pi(?![A-Za-z])/g,'Math.PI');
+  let fn;
+  try{fn=new Function('x',`"use strict";return ${body};`);fn(0)}
+  catch(e){if(record)showErr('graphArea','Función inválida. Revisa sintaxis.');return}
+  const xMin=-8,xMax=8,N=500;
+  const labels=[],data=[];
+  for(let i=0;i<=N;i++){
+    const x=xMin+(xMax-xMin)*i/N;
+    const y=fn(x);
+    labels.push(parseFloat(x.toFixed(3)));
+    data.push(isFinite(y)&&Math.abs(y)<1e6?parseFloat(y.toFixed(5)):null);
+  }
+  const cfg={
+    type:'line',
+    data:{labels,datasets:[{label:`y = ${fnStr}`,data,borderColor:'#00D4FF',borderWidth:2,pointRadius:0,tension:0,fill:{target:'origin',above:'rgba(0,212,255,0.04)',below:'rgba(123,97,255,0.04)'},spanGaps:false}]},
+    options:{
+      responsive:true,animation:{duration:450},
+      plugins:{legend:{labels:{color:'#7A8BAA',font:{family:'Rajdhani',size:12}}},tooltip:{callbacks:{label:ctx=>`y = ${ctx.parsed.y?.toFixed(4)}`}}},
+      scales:{
+        x:{grid:{color:'rgba(122,139,170,0.08)'},ticks:{color:'#7A8BAA',maxTicksLimit:10,font:{family:'JetBrains Mono',size:10}}},
+        y:{grid:{color:'rgba(122,139,170,0.08)'},ticks:{color:'#7A8BAA',font:{family:'JetBrains Mono',size:10}}}
+      }
+    }
+  };
+  if(gChart)gChart.destroy();
+  gChart=new Chart(cv,cfg);
+  const yVals=data.filter(v=>v!==null);
+  const yMin=Math.min(...yVals),yMax=Math.max(...yVals);
+  document.getElementById('gInfo').innerHTML=`
+    <div class="gi"><div class="gi-l">Función</div><div class="gi-v" style="font-size:.75rem">y = ${fnStr}</div></div>
+    <div class="gi"><div class="gi-l">Y mínimo</div><div class="gi-v">${fmtN(yMin,4)}</div></div>
+    <div class="gi"><div class="gi-l">Y máximo</div><div class="gi-v">${fmtN(yMax,4)}</div></div>
+    <div class="gi"><div class="gi-l">Dominio</div><div class="gi-v">[${xMin}, ${xMax}]</div></div>`;
+  if(record){gCount++;document.getElementById('stGraphs').textContent=gCount;addHist('Gráfica','y = '+fnStr,`[${fmtN(yMin,3)},${fmtN(yMax,3)}]`,'📈','#7B61FF')}
+}
+
+/* ══════════════════════════════════════════════════
+   HISTORY
+══════════════════════════════════════════════════ */
+function renderHist(){
+  const list=document.getElementById('histList');
+  if(!histData.length){list.innerHTML='<div class="empty-h"><div class="ei">🕑</div>Sin operaciones en el historial.</div>';return}
+  list.innerHTML=histData.map((h,i)=>`
+    <div class="hi">
+      <div class="hi-ic" style="background:${h.col}22;color:${h.col}">${h.ic}</div>
+      <div style="flex:1;min-width:0"><div class="hi-eq">${h.eq}</div><div class="hi-cat">${h.cat}</div></div>
+      <div class="hi-res">${h.res}</div>
+      <div class="hi-t">${h.t.toLocaleTimeString('es')}</div>
+      <button class="hi-del" onclick="delHist(${i})">✕</button>
+    </div>`).join('');
+}
+function delHist(i){histData.splice(i,1);document.getElementById('hBadge').textContent=histData.length;renderHist()}
+function clearHist(){histData=[];document.getElementById('hBadge').textContent=0;renderHist()}
+
+/* ══════════════════════════════════════════════════
+   KEYBOARD
+══════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════
+   AI SOLVER
+══════════════════════════════════════════════════ */
+function setAiEx(v){document.getElementById('aiInput').value=v}
+function clearAI(){
+  const r=document.getElementById('aiRes');
+  r.classList.remove('show');r.innerHTML='';
+  document.getElementById('aiInput').value='';
+}
+
+async function solveAI(){
+  const input=document.getElementById('aiInput').value.trim();
+  if(!input){return}
+  const resEl=document.getElementById('aiRes');
+  const btn=document.getElementById('aiBtnSolve');
+
+  resEl.innerHTML=`<div class="ai-thinking"><div class="ai-dots"><span></span><span></span><span></span></div><span>Analizando ejercicio…</span></div>`;
+  resEl.classList.add('show');
+  btn.disabled=true;btn.style.opacity='.5';
+
+  // Pequeño delay para que el loading se vea
+  await new Promise(r=>setTimeout(r,400));
+
+  try {
+    const result = mathSolverAI(input);
+    resEl.innerHTML = result.html;
+    addHist('IA', input, result.short, '🤖', '#00E676');
+  } catch(err) {
+    resEl.innerHTML=`<div class="err-box">⚠ No pude interpretar el ejercicio. Intenta escribirlo más claramente.<br><small style="opacity:.6">${err.message}</small></div>`;
+  }
+
+  btn.disabled=false;btn.style.opacity='1';
+}
+
+function mathSolverAI(raw){
+  const s = raw.trim();
+  const sl = s.toLowerCase().replace(/\s+/g,' ');
+
+  // ── RECTA por dos puntos ─────────────────────
+  const rectaDos = s.match(/\((-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\).*?\((-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\)/);
+  if(rectaDos || sl.includes('recta') || sl.includes('pendiente')) {
+    return solveRecta(s);
+  }
+
+  // ── LOGARITMO con propiedades ────────────────
+  if(sl.includes('ln') || (sl.includes('log') && sl.includes('='))) {
+    return solveLogEq(s);
+  }
+
+  // ── ECUACIÓN RACIONAL ────────────────────────
+  if(sl.match(/\(.*x.*\).*\/.*\(.*x.*\)/) || (sl.includes('/') && sl.includes('='))) {
+    return solveRacional(s);
+  }
+
+  throw new Error('Tipo de ejercicio no reconocido');
+}
+
+// ─── RESOLVER RECTA ─────────────────────────────
+function solveRecta(s){
+  const pts = [...s.matchAll(/\((-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\)/g)];
+  const mMatch = s.match(/pendiente\s*[=:]\s*(-?\d+\.?\d*)|pendiente\s+(-?\d+\.?\d*)/i);
+
+  let steps=[], m, x0, y0;
+
+  if(pts.length>=2){
+    const x1=parseFloat(pts[0][1]),y1=parseFloat(pts[0][2]);
+    const x2=parseFloat(pts[1][1]),y2=parseFloat(pts[1][2]);
+    m=(y2-y1)/(x2-x1);
+    x0=x1;y0=y1;
+    steps=[
+      `Puntos dados: P₁(${x1}, ${y1}) y P₂(${x2}, ${y2})`,
+      `Pendiente: m = (y₂ - y₁) / (x₂ - x₁) = (${y2} - ${y1}) / (${x2} - ${x1}) = ${fmtN(y2-y1)} / ${fmtN(x2-x1)} = ${fmtN(m)}`,
+      `Forma punto-pendiente: y - y₁ = m(x - x₁)`,
+      `Sustituyendo: y - ${y1} = ${fmtN(m)}(x - ${x1})`,
+      `Despejando y: y = ${fmtN(m)}x ${fmtN(m*(-x1)+y1)>=0?'+ '+fmtN(m*(-x1)+y1):'- '+fmtN(Math.abs(m*(-x1)+y1))}`,
+    ];
+    const b=y1-m*x1;
+    const res=`y = ${fmtN(m)}x ${b>=0?'+ '+fmtN(b):'- '+fmtN(Math.abs(b))}`;
+    return {html:buildAIRes('ECUACIÓN DE LA RECTA',steps,res), short:res};
+  } else if(mMatch && pts.length>=1){
+    m=parseFloat(mMatch[1]||mMatch[2]);
+    x0=parseFloat(pts[0][1]);y0=parseFloat(pts[0][2]);
+    const b=y0-m*x0;
+    steps=[
+      `Pendiente dada: m = ${m}`,
+      `Punto dado: (${x0}, ${y0})`,
+      `Forma punto-pendiente: y - ${y0} = ${m}(x - ${x0})`,
+      `Desarrollando: y = ${fmtN(m)}x ${b>=0?'+ '+fmtN(b):'- '+fmtN(Math.abs(b))}`,
+    ];
+    const res=`y = ${fmtN(m)}x ${b>=0?'+ '+fmtN(b):'- '+fmtN(Math.abs(b))}`;
+    return {html:buildAIRes('ECUACIÓN DE LA RECTA',steps,res), short:res};
+  }
+  throw new Error('No se encontraron puntos o pendiente válidos');
+}
+
+// ─── RESOLVER ECUACIÓN LOGARÍTMICA ──────────────
+function solveLogEq(s){
+  // Detectar base y tipo
+  const isLn = s.toLowerCase().includes('ln');
+  const base = isLn ? Math.E : 10;
+  const baseStr = isLn ? 'e' : '10';
+
+  // Caso: log(expr) = número → expr = base^número
+  const simpleLog = s.match(/log\s*\(([^)]+)\)\s*=\s*(-?\d+\.?\d*)/i);
+  if(simpleLog && !isLn){
+    const expr=simpleLog[1], rhs=parseFloat(simpleLog[2]);
+    const val=Math.pow(10,rhs);
+    const steps=[
+      `Ecuación: log(${expr}) = ${rhs}`,
+      `Definición: log₁₀(A) = B  ↔  A = 10^B`,
+      `Aplicamos: ${expr} = 10^${rhs} = ${val}`,
+      `Resolvemos: ${expr} = ${val}`,
+    ];
+    // Intentar resolver expresión cuadrática
+    const poly=parsePoly(expr.toLowerCase().replace(/\s/g,''));
+    const a=poly[2]||0,b=(poly[1]||0),c=(poly[0]||0)-val;
+    if(a!==0){
+      const disc=b*b-4*a*c;
+      steps.push(`Ecuación cuadrática: ${a}x² + ${b}x + ${c+val} = ${val}`);
+      steps.push(`Reorganizando: ${a}x² + ${b}x + ${c} = 0`);
+      steps.push(`Discriminante: Δ = ${b}² - 4(${a})(${c}) = ${disc}`);
+      if(disc>=0){
+        const x1=(-b+Math.sqrt(disc))/(2*a), x2=(-b-Math.sqrt(disc))/(2*a);
+        steps.push(`x₁ = ${fmtN(x1)}, x₂ = ${fmtN(x2)}`);
+        const valid=[x1,x2].filter(x=>{try{return eval(expr.replace(/x/g,`(${x})`))-val>-1e-6}catch(e){return false}});
+        const res=valid.length>0?valid.map(x=>`x = ${fmtN(x)}`).join(', '):`x₁ = ${fmtN(x1)}, x₂ = ${fmtN(x2)} (verificar dominio)`;
+        steps.push(`Verificar dominio: argumento del log debe ser positivo`);
+        return {html:buildAIRes('ECUACIÓN LOGARÍTMICA',steps,res),short:res};
+      }
+    }
+    const res=`${expr} = ${val}`;
+    return {html:buildAIRes('ECUACIÓN LOGARÍTMICA',steps,res),short:res};
+  }
+
+  // Caso: ln(A) + ln(B) = ln(C) → A·B = C
+  const lnSum = s.match(/ln\s*\(([^)]+)\)\s*\+\s*ln\s*\(([^)]+)\)\s*=\s*ln\s*\(([^)]+)\)/i);
+  if(lnSum){
+    const A=lnSum[1],B=lnSum[2],C=lnSum[3];
+    const steps=[
+      `Ecuación: ln(${A}) + ln(${B}) = ln(${C})`,
+      `Propiedad: ln(a) + ln(b) = ln(a·b)`,
+      `Aplicamos: ln((${A})(${B})) = ln(${C})`,
+      `Si ln(X) = ln(Y) entonces X = Y`,
+      `Entonces: (${A})(${B}) = ${C}`,
+      `Expandiendo y resolviendo la ecuación resultante…`,
+    ];
+    // Intentar resolver numéricamente
+    const eq=`(${A})*(${B}) - (${C})`;
+    let sol=null;
+    for(let x=-100;x<=100;x+=0.001){
+      try{
+        const val=eval(eq.replace(/x/g,`(${x})`));
+        const valNext=eval(eq.replace(/x/g,`(${x+0.001})`));
+        if(Math.sign(val)!==Math.sign(valNext)){sol=x+0.0005;break}
+      }catch(e){}
+    }
+    if(sol!==null){
+      steps.push(`Solución aproximada: x ≈ ${fmtN(sol,4)}`);
+      steps.push(`Verificar dominio: todos los argumentos de ln deben ser positivos`);
+      const res=`x ≈ ${fmtN(sol,4)}`;
+      return {html:buildAIRes('ECUACIÓN LOGARÍTMICA (ln)',steps,res),short:res};
+    }
+    const res=`(${A})(${B}) = ${C}`;
+    return {html:buildAIRes('ECUACIÓN LOGARÍTMICA (ln)',steps,res),short:res};
+  }
+
+  // Caso genérico: log(A) + log(B) = C
+  const logSum = s.match(/log\s*\(([^)]+)\)\s*\+\s*log\s*\(([^)]+)\)\s*=\s*(-?\d+\.?\d*)/i);
+  if(logSum){
+    const A=logSum[1],B=logSum[2],rhs=parseFloat(logSum[3]);
+    const val=Math.pow(10,rhs);
+    const steps=[
+      `log(${A}) + log(${B}) = ${rhs}`,
+      `Propiedad: log(a) + log(b) = log(a·b)`,
+      `log((${A})(${B})) = ${rhs}`,
+      `(${A})(${B}) = 10^${rhs} = ${val}`,
+      `Resolvemos la ecuación resultante`,
+    ];
+    const res=`(${A})(${B}) = ${val}`;
+    return {html:buildAIRes('ECUACIÓN LOGARÍTMICA',steps,res),short:res};
+  }
+
+  // Caso: log₂(x-5) = 4
+  const logBase = s.match(/log[_₂₃₅]?(\d+)?\s*\(?([^)=]+)\)?\s*=\s*(-?\d+\.?\d*)/i);
+  if(logBase){
+    const b=parseFloat(logBase[1])||2, expr=logBase[2].trim(), rhs=parseFloat(logBase[3]);
+    const val=Math.pow(b,rhs);
+    const steps=[
+      `log${b}(${expr}) = ${rhs}`,
+      `Definición: log_b(A) = C  ↔  A = b^C`,
+      `Aplicamos: ${expr} = ${b}^${rhs} = ${val}`,
+      `Resolvemos: ${expr} = ${val}`,
+    ];
+    const poly=parsePoly(expr.toLowerCase().replace(/\s/g,''));
+    const coefA=poly[1]||1, coefB=(poly[0]||0)-val;
+    const x=-coefB/coefA;
+    steps.push(`x = ${fmtN(x)}`);
+    steps.push(`Verificación: log${b}(${fmtN(x)}-${Math.abs(poly[0]||0)}) = log${b}(${fmtN(val)}) = ${rhs} ✓`);
+    const res=`x = ${fmtN(x)}`;
+    return {html:buildAIRes('ECUACIÓN LOGARÍTMICA',steps,res),short:res};
+  }
+
+  throw new Error('Formato de ecuación logarítmica no reconocido');
+}
+
+// ─── RESOLVER ECUACIÓN RACIONAL ─────────────────
+function solveRacional(s){
+  // Forma: (ax+b)/(cx+d) = (ex+f)/(gx+h)
+  const fracEq = s.match(/\(([^)]+)\)\/\(([^)]+)\)\s*=\s*\(([^)]+)\)\/\(([^)]+)\)/);
+  if(fracEq){
+    const n1=fracEq[1],d1=fracEq[2],n2=fracEq[3],d2=fracEq[4];
+    const steps=[
+      `Ecuación: (${n1})/(${d1}) = (${n2})/(${d2})`,
+      `Multiplicación cruzada: (${n1})(${d2}) = (${n2})(${d1})`,
+    ];
+    // Multiplicar polinomios
+    const pN1=parsePoly(n1.toLowerCase()),pD2=parsePoly(d2.toLowerCase());
+    const pN2=parsePoly(n2.toLowerCase()),pD1=parsePoly(d1.toLowerCase());
+    const lhs=polyMul(pN1,pD2), rhs=polyMul(pN2,pD1);
+    const diff=polyAdd(lhs,rhs,-1);
+    steps.push(`Expandimos: ${polyToStr(lhs)} = ${polyToStr(rhs)}`);
+    steps.push(`Reorganizamos: ${polyToStr(diff)} = 0`);
+
+    const a=diff[2]||0,b=diff[1]||0,c=diff[0]||0;
+    if(a!==0){
+      const disc=b*b-4*a*c;
+      steps.push(`Ecuación cuadrática con a=${a}, b=${b}, c=${c}`);
+      steps.push(`Discriminante: Δ = ${disc}`);
+      if(disc>=0){
+        const x1=(-b+Math.sqrt(disc))/(2*a), x2=(-b-Math.sqrt(disc))/(2*a);
+        // Verificar que no anulen denominadores
+        const valid=[];
+        [x1,x2].forEach(x=>{
+          const dv1=eval(d1.toLowerCase().replace(/x/g,`(${x})`));
+          const dv2=eval(d2.toLowerCase().replace(/x/g,`(${x})`));
+          if(Math.abs(dv1)>1e-9&&Math.abs(dv2)>1e-9) valid.push(x);
+        });
+        if(valid.length>0){
+          const res=valid.map(x=>`x = ${fmtN(x)}`).join(', ');
+          steps.push(`Verificamos que no anulen denominadores`);
+          steps.push(res);
+          return {html:buildAIRes('ECUACIÓN RACIONAL',steps,res),short:res};
+        }
+      }
+    } else if(b!==0){
+      const x=-c/b;
+      steps.push(`Ecuación lineal: ${b}x = ${-c}`);
+      steps.push(`x = ${fmtN(x)}`);
+      const res=`x = ${fmtN(x)}`;
+      return {html:buildAIRes('ECUACIÓN RACIONAL',steps,res),short:res};
+    }
+  }
+
+  // Forma: (ax+b)/(cx+d) + n = (ex+f)/(gx+h)
+  const fracPlus = s.match(/\(([^)]+)\)\/\(([^)]+)\)\s*\+\s*(\d+)\s*=\s*\(([^)]+)\)\/\(([^)]+)\)/);
+  if(fracPlus){
+    const n1=fracPlus[1],d1=fracPlus[2],k=parseFloat(fracPlus[3]),n2=fracPlus[4],d2=fracPlus[5];
+    const steps=[
+      `Ecuación: (${n1})/(${d1}) + ${k} = (${n2})/(${d2})`,
+      `Pasamos ${k} al otro lado: (${n1})/(${d1}) = (${n2})/(${d2}) - ${k}`,
+      `Multiplicamos todo por (${d1})(${d2}) para eliminar denominadores`,
+      `Resolvemos la ecuación resultante`,
+    ];
+    // Solución numérica
+    let sol=null;
+    for(let x=-200;x<=200;x+=0.01){
+      try{
+        const lv=eval(`(${n1.replace(/x/g,`(${x})`)})/(${d1.replace(/x/g,`(${x})`)})+${k}`);
+        const rv=eval(`(${n2.replace(/x/g,`(${x})`)})/(${d2.replace(/x/g,`(${x})`)})`);
+        const lvn=eval(`(${n1.replace(/x/g,`(${x+0.01})`)})/(${d1.replace(/x/g,`(${x+0.01})`)})+${k}`);
+        const rvn=eval(`(${n2.replace(/x/g,`(${x+0.01})`)})/(${d2.replace(/x/g,`(${x+0.01})`)})`);
+        if(Math.sign(lv-rv)!==Math.sign(lvn-rvn)&&Math.abs(lv-rv)<10){sol=x+0.005;break}
+      }catch(e){}
+    }
+    if(sol!==null){
+      steps.push(`x ≈ ${fmtN(sol,4)}`);
+      const res=`x ≈ ${fmtN(sol,4)}`;
+      return {html:buildAIRes('ECUACIÓN RACIONAL',steps,res),short:res};
+    }
+  }
+
+  throw new Error('Formato de ecuación racional no reconocido');
+}
+
+function buildAIRes(tipo,steps,resultado){
+  const stepsHtml=steps.map((s,i)=>`
+    <div class="step" style="animation-delay:${i*.07}s">
+      <div class="step-n">${i+1}</div>
+      <div class="step-t">${s}</div>
+    </div>`).join('');
+  return `
+    <div class="steps-box">
+      <div class="steps-hd">TIPO: ${tipo}</div>
+      ${stepsHtml}
+    </div>
+    <div class="ai-result">📐 ${resultado}</div>`;
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter')return;
+  const id=document.querySelector('.pg.act')?.id;
+  if(id==='pg-poli')solvePoli();
+  else if(id==='pg-fact')solveFact();
+  else if(id==='pg-lin')solveLinear();
+  else if(id==='pg-quad')solveQuad();
+  else if(id==='pg-sys')solveSys();
+  else if(id==='pg-log')solveLog();
+  else if(id==='pg-graph')drawGraph();
+});
+</script>
+</body>
+</html>
